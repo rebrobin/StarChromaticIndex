@@ -53,10 +53,10 @@ if __name__=="__main__":
     recolor_verts =[v for v in H.vertices() if H.get_vertex(v)['color'][:3]==(255,0,255)]  # magenta vertices
     precolor_verts=[v for v in H.vertices() if v not in extend_verts and v not in reducer_verts and v not in recolor_verts]  # rest of vertices
     
-    #print("extend_verts=",extend_verts)
-    #print("reducer_verts=",reducer_verts)
-    #print("recolor_verts=",recolor_verts)
-    #print("precolor_verts=",precolor_verts)
+    print("extend_verts=",extend_verts)
+    print("reducer_verts=",reducer_verts)
+    print("recolor_verts=",recolor_verts)
+    print("precolor_verts=",precolor_verts)
 
     recolor_map={v:i+H.num_verts() for i,v in enumerate(recolor_verts)}
     #recolor_map=dict()
@@ -87,33 +87,39 @@ if __name__=="__main__":
     H.relabel(perm=new_permutation,inplace=True)
     
     new_precolor_verts=list(range(len(precolor_verts)))
-    new_recolor_verts=list(range(len(recolor_verts)+len(reducer_verts)))
+    new_recolor_verts=list(range(len(new_precolor_verts),len(new_precolor_verts)+len(recolor_verts)+len(reducer_verts)))
     new_extend_verts  =list(range(len(new_precolor_verts)+len(new_recolor_verts),H.num_verts()))  # will include recolored vertices
     
-    print(new_precolor_verts)
-    print("new_recolor_verts",new_recolor_verts)
-    print(new_extend_verts)
+    #print(new_precolor_verts)
+    #print("new_recolor_verts",new_recolor_verts)
+    #print(new_extend_verts)
     #print(H.vertices())
     #print(new_order)
     #print(f"new_permutation={new_permutation}")
 
     #TODO: We can reorder precolor+recolor, but need to keep track of which is which. 
-    #P=[]
-    #while new_precolor_verts:
-        #L=[]
-        #for v in new_precolor_verts:
-             #s=len([x for x in H.neighbors(v) if x in P])
-             #L.append((s,v))
-        #w=max(L)[1]
-        #P.append(w)
-        #new_precolor_verts.remove(w)
+    S=copy(new_precolor_verts)+copy(new_recolor_verts)  # reorder these vertices
+    P=[]  # new order of the vertices
+    while S:
+        L=[]
+        for v in S:
+             s=len([x for x in H.neighbors(v) if x in P])
+             L.append((s,v))
+        w=max(L)[1]
+        P.append(w)
+        S.remove(w)
     
-    #new_precolor_verts=P
-    #new_order=new_precolor_verts+new_recolor_verts+new_extend_verts  # the new order of the vertices
-    #new_permutation={v:i for i,v in enumerate(new_order)}
+    #print(P)
+    new_precolor_verts=[P.index(v) for v in new_precolor_verts]
+    new_recolor_verts =[P.index(v) for v in new_recolor_verts]
+    new_order=P+new_extend_verts  # the new order of the vertices
+    new_permutation={v:i for i,v in enumerate(new_order)}
     #print("new_permutation=",new_permutation)
     #print(new_permutation.values())
-    #H.relabel(perm=new_permutation,inplace=True)
+    #print("new precolor verts", new_precolor_verts)
+    #print("new recolor verts", new_recolor_verts)
+    #print("new order", new_order)
+    H.relabel(perm=new_permutation,inplace=True)
 
     colors=dict()
     # plotted colors are named colors in matplotlib
