@@ -3,8 +3,9 @@
 # This script is designed for testing star chromatic index.
 
 import geogebra_graph
-import itertools
 import sys
+import PrecoloringExtension
+import itertools
 
 
 if __name__=="__main__":
@@ -35,6 +36,7 @@ if __name__=="__main__":
     # copy G's edge labels into H's vertex information.
     for e in H.vertices():
         H.set_vertex(e,G.edge_label(e[0],e[1]))
+
     
     # create the pos dictionary; each vertex of H will be at the midpoint of the edge in G.
     pos=dict()
@@ -49,22 +51,70 @@ if __name__=="__main__":
     extend_verts  =[v for v in H.vertices() if H.get_vertex(v)['color'][:3]==(0,255,0)]  # green vertices
     reducer_verts =[v for v in H.vertices() if H.get_vertex(v)['color'][:3]==(255,0,0)]  # red vertices
     recolor_verts =[v for v in H.vertices() if H.get_vertex(v)['color'][:3]==(255,0,255)]  # magenta vertices
-    precolor_verts=[v for v in H.vertices() if v not in extend_verts and v not in reducer_verts]  # rest of vertices
+    precolor_verts=[v for v in H.vertices() if v not in extend_verts and v not in reducer_verts and v not in recolor_verts]  # rest of vertices
     
     #print("extend_verts=",extend_verts)
     #print("reducer_verts=",reducer_verts)
+    #print("recolor_verts=",recolor_verts)
     #print("precolor_verts=",precolor_verts)
+
+    recolor_map={v:i+H.num_verts() for i,v in enumerate(recolor_verts)}
+    #recolor_map=dict()
+    #for i,e in enumerate(recolor_verts):
+    #    recolor_map[e]=H.num_verts()+i
+    recolored_verts=list(recolor_map.values())  # vertices that will receive a coloring, and hence need to be extended to
+    H.add_vertices(recolored_verts)
+    # edges within recolor_verts need to be cloned to recolored_verts
+    for e in H.subgraph(recolor_verts).edges():
+        #print(e)
+        H.add_edge(recolor_map[e[0]],recolor_map[e[1]])
+    for v,w in itertools.product(precolor_verts,recolor_verts):
+        if H.has_edge(v,w):
+            H.add_edge(v,recolor_map[w])
+    for v,w in itertools.product(extend_verts,recolor_verts):
+        if H.has_edge(v,w):
+            H.delete_edge(v,w)
+            H.add_edge(v,recolor_map[w])
     
-    new_order=precolor_verts+reducer_verts+extend_verts  # the new order of the vertices
+    #print("extend_verts=",extend_verts)
+    #print("reducer_verts=",reducer_verts)
+    #print("recolor_verts=",recolor_verts)
+    #print("precolor_verts=",precolor_verts)
+    #print("recolored_verts=",recolored_verts)
+
+    new_order=precolor_verts+recolor_verts+reducer_verts+extend_verts+recolored_verts  # the new order of the vertices
     new_permutation={v:i for i,v in enumerate(new_order)}
     H.relabel(perm=new_permutation,inplace=True)
     
     new_precolor_verts=list(range(len(precolor_verts)))
-    new_reducer_verts =list(range(len(precolor_verts),len(precolor_verts)+len(reducer_verts)))
-    new_extend_verts  =list(range(len(precolor_verts)+len(reducer_verts),H.num_verts()))
+    new_recolor_verts=list(range(len(recolor_verts)+len(reducer_verts)))
+    new_extend_verts  =list(range(len(new_precolor_verts)+len(new_recolor_verts),H.num_verts()))  # will include recolored vertices
     
-    #TODO:  We need some additional code here to sort the vertices in each order to produce a good order for the backtracking search used in the precoloring extension code.
+    print(new_precolor_verts)
+    print("new_recolor_verts",new_recolor_verts)
+    print(new_extend_verts)
+    #print(H.vertices())
+    #print(new_order)
+    #print(f"new_permutation={new_permutation}")
+
+    #TODO: We can reorder precolor+recolor, but need to keep track of which is which. 
+    #P=[]
+    #while new_precolor_verts:
+        #L=[]
+        #for v in new_precolor_verts:
+             #s=len([x for x in H.neighbors(v) if x in P])
+             #L.append((s,v))
+        #w=max(L)[1]
+        #P.append(w)
+        #new_precolor_verts.remove(w)
     
+    #new_precolor_verts=P
+    #new_order=new_precolor_verts+new_recolor_verts+new_extend_verts  # the new order of the vertices
+    #new_permutation={v:i for i,v in enumerate(new_order)}
+    #print("new_permutation=",new_permutation)
+    #print(new_permutation.values())
+    #H.relabel(perm=new_permutation,inplace=True)
+
     colors=dict()
     # plotted colors are named colors in matplotlib
     # https://matplotlib.org/3.1.0/gallery/color/named_colors.html
@@ -78,10 +128,20 @@ if __name__=="__main__":
     for color in colors.values():
         vertex_colors[color]=[]
     for v in H.vertices():
-        color_of_v=H.get_vertex(v)['color'][:3]
-        if color_of_v in colors:
-            vertex_colors[colors[color_of_v]].append(v)
+        if H.get_vertex(v):
+            color_of_v=H.get_vertex(v)['color'][:3]
+            if color_of_v in colors:
+                vertex_colors[colors[color_of_v]].append(v)
+            else:
+                vertex_colors[other_v].append(v)
         else:
             vertex_colors[other_v].append(v)
     
     H.plot(vertex_colors=vertex_colors).save(file_input+'.line_graph.pdf')
+
+    Result = PrecoloringExtension.check_precoloring_extension(H,len(new_precolor_verts),6,
+       new_precolor_verts,new_recolor_verts,new_extend_verts)
+    # Assumption: new_precolor_verts+new_recolor_verts is initial segment of the vertices.
+    print(Result)
+
+
