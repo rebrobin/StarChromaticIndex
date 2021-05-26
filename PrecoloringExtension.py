@@ -30,6 +30,7 @@ def check_precoloring_extension(G,num_precolored_verts,num_colors,precolor_verts
     c=[None]*G.num_verts()  # assignment of colors; c[v] is the color assigned to vertex v.
     cur=0  # current vertex
     c[cur]=-1
+    num_failures=0
     
     while cur>=0:
         # we have just arrived at cur, and we need to find the next valid color for cur
@@ -45,8 +46,11 @@ def check_precoloring_extension(G,num_precolored_verts,num_colors,precolor_verts
                 cur-=1
                 
                 if cur==num_precolored_verts-1:  # we are going to backtrack to the last precolored vertex, so we have failed to extend this precoloring
-                    print("Failure!",c)
-                    return False
+                    num_failures=num_failures+1 #add one to the number of failures
+                    if num_failures >= 100:
+                        print("Number of failures is over", num_failures)
+                        return False #stop when number of failures is over 100
+                    print("We found a failure! Current number of failures is:", num_failures) #print how many failures have been found currently
                 
                 backtrack=True
                 break  # while loop for finding next color
