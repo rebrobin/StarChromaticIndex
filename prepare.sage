@@ -145,7 +145,7 @@ if __name__=="__main__":
     
     H.plot(vertex_colors=vertex_colors).save(file_input+'.line_graph.pdf')
 
-    Result = PrecoloringExtension.check_precoloring_extension(H,len(new_precolor_verts),6,
+    Result = PrecoloringExtension.check_precoloring_extension(H,len(new_precolor_verts)+len(new_recolor_verts),6,
        new_precolor_verts,new_recolor_verts,new_extend_verts)
     # Assumption: new_precolor_verts+new_recolor_verts is initial segment of the vertices.
     print(Result)
