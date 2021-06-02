@@ -8,6 +8,7 @@ import itertools
 
 def check_precoloring_extension(G,num_precolored_verts,num_colors,precolor_verts=[],recolor_verts=[],extend_verts=[]):
     # vertex coloring; we precolor vertices 0..num_precolored_verts-1, and then extend.
+    #print(num_precolored_verts, num_colors, precolor_verts, recolor_verts, extend_verts)
     
     # do some preprocessing for star vertex coloring
     PC=[[] for i in range(G.num_verts())]
@@ -24,7 +25,9 @@ def check_precoloring_extension(G,num_precolored_verts,num_colors,precolor_verts
             else:
                 N=list(H.neighbors(cur))
             other=list(set(S)-set(N)-set([cur]))
-            #print(f"{cur=} {N=} {other=}")
+            #print(f"cur={cur} N={N} other={other} S={S}", H.num_edges(), H.degree_sequence())
+            #G.plot().save('G.pdf')
+            #exit()
             PC[cur].append((N[0],N[1],other[0]))
     
     c=[None]*G.num_verts()  # assignment of colors; c[v] is the color assigned to vertex v.
@@ -35,7 +38,7 @@ def check_precoloring_extension(G,num_precolored_verts,num_colors,precolor_verts
     while cur>=0:
         # we have just arrived at cur, and we need to find the next valid color for cur
         #print(f"{cur=} {c=}")
-        if cur <= 6:
+        if cur <= num_precolored_verts-7:
             print(cur,c)
         
         backtrack=False
@@ -50,7 +53,7 @@ def check_precoloring_extension(G,num_precolored_verts,num_colors,precolor_verts
                     if num_failures >= 100:
                         print("Number of failures is over", num_failures)
                         return False #stop when number of failures is over 100
-                    print("We found a failure! Current number of failures is:", num_failures) #print how many failures have been found currently
+                    print("We found a failure! Current number of failures is:", num_failures, "The coloring is", c) #print how many failures have been found currently
                 
                 backtrack=True
                 break  # while loop for finding next color
