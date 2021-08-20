@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <cstdio>
 
 
 class cFourSetBlocker
@@ -27,7 +28,7 @@ public:
     std::vector<std::vector<int> > adj_pred;  // list of adjacent predecessors for each vertex
     int num_colors;
     int num_precolored_verts;
-    std::vector<cFourSetBlocker> FourSets;  // indexed by each vertex, gives the sets to check for the star chromatic condition on P4s and C4s.
+    std::vector<std::vector<cFourSetBlocker> > FourSets;  // indexed by each vertex, gives the sets to check for the star chromatic condition on P4s and C4s.
     
     // for parallelization
     int parallel_job_number;
@@ -61,6 +62,8 @@ cProblemInstance::cProblemInstance(
             if (line.rfind("n=",0)==0)
             {
                 n=std::stoi(line.substr(2));
+                adj_pred.resize(n);  // initialize to be indexed by vertices
+                FourSets.resize(n);  // initialize to be indexed by vertices
                 printf("n=%d\n",n);
             }
             else if (line.rfind("num_colors=",0)==0)
@@ -75,11 +78,40 @@ cProblemInstance::cProblemInstance(
             }
             else if (line.rfind("G=",0)==0)
             {
+                std::string mapping("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz@#");
                 
+                int pos=2;
+                int value=0;  // 6-bit value
+                int bits_left_in_value=0;
+                for (int j=0; j<n; ++j)
+                    for (int i=0; i<n; ++i)
+                    {
+                        if (bits_left_in_value==0)
+                        {
+                            // We read in the next character and decode it.
+                            value=mapping.find(line[pos]);
+                            pos++;
+                            bits_left_in_value=6;
+                        }
+                        
+                        if ((value & 1)!=0)  // test whether the bottom bit is nonzero
+                        {
+                            // there is an edge between i and j.
+                            adj_pred[j].push_back(i);
+                            printf("There is an edge between %d and %d\n",i,j);
+                        }
+                        
+                        value>>=1;
+                        bits_left_in_value--;
+                    }
             }
-            else if (line.rfind("G=",0)==0)
+            else if (line.rfind("B=",0)==0)  // four-vertex set blocker
             {
-                
+                int same1,same2,other1,other2;
+                sscanf(line.substr(2).c_str(),
+                    "%d,%d,%d,%d",&same1,&same2,&other1,&other2);
+                // we assume same1>same2
+                FourSets[same1].push_back(cFourSetBlocker(same2,other1,other2));
             }
         }
     
