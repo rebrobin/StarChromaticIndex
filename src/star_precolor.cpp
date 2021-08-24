@@ -79,12 +79,14 @@ cProblemInstance::cProblemInstance(
             else if (line.rfind("G=",0)==0)
             {
                 std::string mapping("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz@#");
+                // The first bit is the least significant bit.
                 
                 int pos=2;
                 int value=0;  // 6-bit value
                 int bits_left_in_value=0;
+                int count=0;
                 for (int j=0; j<n; ++j)
-                    for (int i=0; i<n; ++i)
+                    for (int i=0; i<j; ++i)
                     {
                         if (bits_left_in_value==0)
                         {
@@ -98,7 +100,7 @@ cProblemInstance::cProblemInstance(
                         {
                             // there is an edge between i and j.
                             adj_pred[j].push_back(i);
-                            printf("There is an edge between %d and %d\n",i,j);
+                            //printf("There is an edge between %2d and %2d\n",i,j);
                         }
                         
                         value>>=1;
