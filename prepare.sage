@@ -220,6 +220,8 @@ if __name__=="__main__":
                     s+=mapping[value]
                     value=0
                     mask=1
+        if mask!=1:  # are there bits remaining in value that were not outputted?
+            s+=mapping[value]
         f.write(s+"\n")
         
         # do some preprocessing for star vertex coloring
