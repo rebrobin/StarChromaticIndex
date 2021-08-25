@@ -169,10 +169,10 @@ bool cProblemInstance::verify_precoloring_extension()
                     num_failures++; // add one to the number of failures
                     printf("We found a failure! Current number of failures is: %2d\n", num_failures);  // print how many failures have been found currently
                     printf("cur=%2d ",cur);
-                    for (int i=0; i<n; i++)
+                    for (int i=0; i<num_precolored_verts; i++)
                         printf(" %d:%d",i,c[i]);
                     printf("\n");
-                    if (num_failures>=1)  // 100
+                    if (num_failures>=100)
                     {
                         printf("Number of failures is over %d\n",num_failures);
                         return false;  // stop when number of failures is over 100
