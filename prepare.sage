@@ -221,3 +221,21 @@ if __name__=="__main__":
                     value=0
                     mask=1
         f.write(s+"\n")
+        
+        # do some preprocessing for star vertex coloring
+        PC=[[] for i in range(H.num_verts())]
+        for S in itertools.combinations(H.vertices(),4):
+            if ( len(set(S) & set(reordered_reducer_verts))>0 and
+                 len(set(S) & set(all_extend_verts))>0 ):
+                continue  # we cannot mix reducer_verts and extend_verts in a P4 or C4.
+            F=H.subgraph(vertices=S)
+            if ((F.num_edges()==4 and F.degree_sequence()==[2,2,2,2]) or
+                (F.num_edges()==3 and F.degree_sequence()==[2,2,1,1])):
+                # F is an induced path or an induced cycle on 4 vertices.
+                cur=max(S)
+                if F.degree(cur)==1:
+                    N=list(F.neighbors(cur))+[x for x in S if x!=cur and F.degree(x)==1]
+                else:
+                    N=list(F.neighbors(cur))
+                other=list(set(S)-set(N)-set([cur]))
+                f.write(f"B={cur},{other[0]},{N[0]},{N[1]}\n")
