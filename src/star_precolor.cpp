@@ -143,7 +143,7 @@ bool cProblemInstance::verify_precoloring_extension()
     {
         // we have just arrived at cur, and we need to find the next valid color for cur
         //printf("\nStarting main loop, cur=%2d c=%d\n",cur,c[cur]);
-        if (cur <= num_precolored_verts-10)
+        if (cur <= num_precolored_verts-12)
         {
             printf("cur=%2d num_precolorings=%19llu",cur,num_precolorings);
             for (int i=0; i<=cur; i++)
