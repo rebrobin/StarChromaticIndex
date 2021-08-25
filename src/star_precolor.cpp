@@ -40,7 +40,9 @@ public:
                      int parallel_num_jobs,
                      int parallel_depth);
     
+    bool verify_precoloring_extension();
 };
+
 
 cProblemInstance::cProblemInstance(
     std::string file_input,
@@ -57,7 +59,7 @@ cProblemInstance::cProblemInstance(
     if (file_in.is_open())
         while (getline(file_in,line))
         {
-            printf("line: %s\n",line.c_str());
+            //printf("line: %s\n",line.c_str());
             
             if (line.rfind("n=",0)==0)
             {
@@ -92,6 +94,7 @@ cProblemInstance::cProblemInstance(
                         {
                             // We read in the next character and decode it.
                             value=mapping.find(line[pos]);
+                            //printf("Read in character at pos=%d, value=%d\n",pos,value);
                             pos++;
                             bits_left_in_value=6;
                         }
@@ -114,12 +117,145 @@ cProblemInstance::cProblemInstance(
                     "%d,%d,%d,%d",&same1,&same2,&other1,&other2);
                 // we assume same1>same2
                 FourSets[same1].push_back(cFourSetBlocker(same2,other1,other2));
+                //printf("There is a four-set blocker %d,%d and %d,%d\n",same1,same2,other1,other2);
             }
         }
     
     // no need to close the file, since the destructor automatically does this when the object goes out of scope.
 }
 
+
+bool cProblemInstance::verify_precoloring_extension()
+    // should the parallelization parameters be parameters for this function?
+{
+    std::vector<int> c(n);  // assignment of colors; c[v] is the color assigned to vertex v.
+    int cur=0;  // current vertex
+    c[cur]=-1;  // color not yet assigned to cur
+    
+    unsigned long long int num_precolorings=0;
+    int num_failures=0;
+    
+    int parallel_count=0;  // counts the number of search tree nodes encountered at depth parallel_depth
+    
+    bool backtrack=false;
+    
+    while (cur>=0)  // main loop
+    {
+        // we have just arrived at cur, and we need to find the next valid color for cur
+        //printf("\nStarting main loop, cur=%2d c=%d\n",cur,c[cur]);
+        if (cur <= num_precolored_verts-10)
+        {
+            printf("cur=%2d num_precolorings=%19llu",cur,num_precolorings);
+            for (int i=0; i<=cur; i++)
+                printf(" %d:%d",i,c[i]);
+            printf("\n");
+        }
+        
+        backtrack=false;
+        
+        while (true)  // finding next color
+        {
+            //printf("finding next color, cur=%d, c[cur]=%d\n",cur,c[cur]);
+            c[cur]++;
+            if ((c[cur]>=num_colors) ||
+                (c[cur]>cur))  // this is an optimization to remove redundancy when permuting color names
+            {
+                // no more left colors left for cur, so backtrack
+                cur--;
+                
+                if (cur==num_precolored_verts-1)
+                    // we are going to backtrack to the last precolored vertex, so we have failed to extend this precoloring
+                {
+                    num_failures++; // add one to the number of failures
+                    printf("We found a failure! Current number of failures is: %2d\n", num_failures);  // print how many failures have been found currently
+                    printf("cur=%2d ",cur);
+                    for (int i=0; i<n; i++)
+                        printf(" %d:%d",i,c[i]);
+                    printf("\n");
+                    if (num_failures>=1)  // 100
+                    {
+                        printf("Number of failures is over %d\n",num_failures);
+                        return false;  // stop when number of failures is over 100
+                    }
+                }
+                
+                backtrack=true;
+                break;  // out of while loop for finding next color
+            }
+            
+            //printf("we have a candidate color for cur=%2d, c[cur]=%d\n",cur,c[cur]);
+            
+            int j;
+            for (j=adj_pred[cur].size()-1; j>=0; j--)
+                // loop through the neighbors that have already been colored
+            {
+                //printf("checking neighbors: cur=%d, c[cur]=%d, j=%d, adj_pred[cur][j]=%d, c=%d\n",cur,c[cur],j,adj_pred[cur][j],c[adj_pred[cur][j]]);
+                if (c[adj_pred[cur][j]]==c[cur])  // c[cur] is not a valid color
+                    break;
+            }
+            
+            //printf("done checking neighbors' colors, j=%2d\n",j);
+            
+            if (j<0)  // we did not find this color c[cur] used in the neighborhood, so c[cur] is a valid color
+            {
+                // we now check the star coloring condition
+                for (j=FourSets[cur].size()-1; j>=0; j--)
+                    if (c[cur]==c[FourSets[cur][j].same] &&
+                        c[FourSets[cur][j].other1]==c[FourSets[cur][j].other2])
+                        //TODO: possible optimization: have FourSets[cur] be a local reference
+                        // c[cur] does not give a valid star coloring
+                        break;  // break out of this for loop, and then continue the while loop to find the next color
+                
+                //printf("done checking star condition, j=%2d\n",j);
+                if (j<0)
+                    // no star coloring conditions were violated, so c[cur] is a good color.
+                    break;  // out of while loop for finding next color
+            }
+            
+        }  // while loop finding next color
+        
+        //printf("testing whether we should backtrack or not, cur=%d, backtrack=%d\n",cur,(int)backtrack);
+        
+        if (backtrack)
+            continue;  // outer while loop for moving cur
+        else  // not backtracking, so we advance to the next vertex
+        {
+            cur++;
+            
+            if (cur==num_precolored_verts)
+                num_precolorings++;
+            
+            if (cur>=n)  // we have colored all of the vertices
+            {
+                //printf("Hooray!  This precoloring extends! cur=%d\n",cur);
+                cur=num_precolored_verts-1;  // go back to the last precolored vertex
+                for (int i=cur+1; i<n; i++)
+                    c[i]=-1;  // unassign the colors beyond cur
+            }
+            else
+            {
+                if (cur==parallel_depth)
+                {
+                    parallel_count++;
+                    printf("cur=%2d parallel_depth=%2d parallel_count=%5d parallel_num_jobs=%5d parallel_job_number=%5d\n",
+                           cur,parallel_depth,parallel_count,parallel_num_jobs,parallel_job_number);
+                    if ((parallel_count%parallel_num_jobs)!=parallel_job_number)
+                    {
+                        // we do not continue examining this subtree of the search tree
+                        //printf("parallel NOT continuing!");
+                        cur--;
+                        continue;
+                    }
+                }
+                c[cur]=-1;  // unassign color of the new cur
+            }
+        }  // advancing to next vertex
+        
+    }  // main while loop
+    
+    printf("num_precolorings=%19llu\n",num_precolorings);
+    return true;
+}
 
 
 int main(int argc, char *argv[])
@@ -139,4 +275,5 @@ int main(int argc, char *argv[])
            file_input.c_str(),parallel_job_number,parallel_num_jobs,parallel_depth);
     
     cProblemInstance P(file_input,parallel_job_number,parallel_num_jobs,parallel_depth);
+    P.verify_precoloring_extension();
 }
