@@ -21,7 +21,7 @@ if __name__=="__main__":
     print(f"Processing {file_input} with {num_colors} colors")
     
     G=geogebra_graph.geogebra_to_graph(file_input)
-    geogebra_graph.geogebra_graph_plot(G).save(file_input+".pdf")
+    #geogebra_graph.geogebra_graph_plot(G).save(file_input+".pdf")
     
     # Color/style conventions from the GeoGebra file:
     # Points become vertices, and line segments become edges.
@@ -35,9 +35,32 @@ if __name__=="__main__":
     
     
     ### Add tendrils as necessary.
+    vertices_incident_to_extend_edges=[]
+    for e in G.edges():
+        if G.edge_label(e[0],e[1])['color'][:3] in [(0,255,0),(255,0,255)]:  # green or magenta vertices
+            vertices_incident_to_extend_edges+=e[:2]
+    
+    pos={v:np.array(p) for v,p in G.get_pos().items()}
+    # compute the center of the picture
+    center=np.average(np.array([pos[v] for v in G.vertices()]),axis=0)
+    # compute the average length of an edge
+    avg_edge_length=np.average(np.array([
+                    np.linalg.norm(pos[u]-pos[v]) for u,v,_ in G.edges()
+                    ]))
+    
+    default_edge_label={'color':(0,0,0),'style':0}
+    default_vertex_info={'color':(0,255,255),'style':0}
+    
+    def compute_pos(root,length,rotation):
+        # we assume that root is a vector, length a scalar, and rotation is an integer
+        offset=(root-center)/np.linalg.norm(root-center)  # unit vector in the direction
+        theta=np.deg2rad(rotation*45)
+        rot_matrix=np.array([[np.cos(theta),-np.sin(theta)],[np.sin(theta),np.cos(theta)]])
+        offset=rot_matrix.dot(offset)  # rotate the offset
+        return root+offset*length
+    
     VG=list(G.vertices())  # make list beforehand, since vertices might be added.
     for v in VG:
-        continue
         if G.degree(v)<2:
             print(f"Something is wrong with the degree of vertex {v}!")
             exit(5)
@@ -46,8 +69,40 @@ if __name__=="__main__":
                 continue
             # we need to add a tendril to this vertex; but how big a tendril?
             # The size depends on the shortest distance to a green or magenta edge.
-            #TODO: To think about.
+            d=min(G.distance(v,x) for x in vertices_incident_to_extend_edges)
+            print(f"{v=} deg={G.degree(v)} {d=}")
+            
+            if d<=2:  # tendril needed
+                
+                stem=G.num_verts()  # new vertex to add
+                print(f"adding {stem=}")
+                G.add_vertex(stem)
+                G.set_vertex(stem,default_vertex_info)
+                G.add_edge(v,stem,default_edge_label)
+                pos[stem]=compute_pos(pos[v],avg_edge_length,0)
+                
+                if d<=1:  # add another layer
+                    branches=list(range(G.num_verts(),G.num_verts()+2))
+                    print(f"adding {branches=}")
+                    for i,b in enumerate(branches):
+                        G.add_vertex(b)
+                        G.set_vertex(b,default_vertex_info)
+                        G.add_edge(stem,b,default_edge_label)
+                        pos[b]=compute_pos(pos[stem],avg_edge_length*.9,i*2-1)
+                    
+                    if d<=0:  # add another layer
+                        for b in branches:
+                            leaves=list(range(G.num_verts(),G.num_verts()+2))
+                            print(f"adding {leaves=}")
+                            for i,l in enumerate(leaves):
+                                G.add_vertex(l)
+                                G.set_vertex(l,default_vertex_info)
+                                G.add_edge(b,l,default_edge_label)
+                                pos[l]=compute_pos(pos[b],avg_edge_length*.8,i)
     
+    G.set_pos(pos)
+    
+    geogebra_graph.geogebra_graph_plot(G).save(file_input+".pdf")
     #exit(5)
     
     H=G.line_graph(labels=False)
