@@ -52,7 +52,7 @@ if __name__=="__main__":
     default_vertex_info={'color':(0,255,255),'style':0}
     
     def compute_pos(root,length,rotation):
-        # we assume that root is a vector, length a scalar, and rotation is an integer
+        # we assume that root is a vector, length a scalar, and rotation is a scalar
         offset=(root-center)/np.linalg.norm(root-center)  # unit vector in the direction
         theta=np.deg2rad(rotation*45)
         rot_matrix=np.array([[np.cos(theta),-np.sin(theta)],[np.sin(theta),np.cos(theta)]])
@@ -60,11 +60,14 @@ if __name__=="__main__":
         return root+offset*length
     
     VG=list(G.vertices())  # make list beforehand, since vertices might be added.
+    G_no_reducer_edges=G.subgraph(vertices=None,  # all the vertices
+        edge_property=lambda e: e[2]['color'][:3]!=(255,0,0))  # no red edges
+    
     for v in VG:
-        if G.degree(v)<2:
+        if G_no_reducer_edges.degree(v)<2:
             print(f"Something is wrong with the degree of vertex {v}!")
             exit(5)
-        elif G.degree(v)==2:
+        elif G_no_reducer_edges.degree(v)==2:
             if G.get_vertex(v)['style']>0:  # style 0 is colored circle; style 4 is diamond
                 continue
             # we need to add a tendril to this vertex; but how big a tendril?
@@ -98,7 +101,7 @@ if __name__=="__main__":
                                 G.add_vertex(l)
                                 G.set_vertex(l,default_vertex_info)
                                 G.add_edge(b,l,default_edge_label)
-                                pos[l]=compute_pos(pos[b],avg_edge_length*.8,i)
+                                pos[l]=compute_pos(pos[b],avg_edge_length*.8,i-.5)
     
     G.set_pos(pos)
     
