@@ -175,7 +175,7 @@ bool cProblemInstance::verify_precoloring_extension()
                     if (num_failures>=100)
                     {
                         printf("Number of failures is over %d, exiting.\n",num_failures);
-                        printf("FAILURE. num_precolorings=%19llu\n",num_precolorings);
+                        printf("FAIL.  num_precolorings=%19llu\n",num_precolorings);
                         return false;  // stop when number of failures is over 100
                     }
                 }
@@ -254,7 +254,7 @@ bool cProblemInstance::verify_precoloring_extension()
         
     }  // main while loop
     
-    printf("Done. num_precolorings=%19llu\n",num_precolorings);
+    printf("Done.  num_precolorings=%19llu\n",num_precolorings);
     return true;
 }
 
