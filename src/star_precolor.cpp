@@ -174,7 +174,8 @@ bool cProblemInstance::verify_precoloring_extension()
                     printf("\n");
                     if (num_failures>=100)
                     {
-                        printf("Number of failures is over %d\n",num_failures);
+                        printf("Number of failures is over %d, exiting.\n",num_failures);
+                        printf("FAILURE. num_precolorings=%19llu\n",num_precolorings);
                         return false;  // stop when number of failures is over 100
                     }
                 }
@@ -253,7 +254,7 @@ bool cProblemInstance::verify_precoloring_extension()
         
     }  // main while loop
     
-    printf("num_precolorings=%19llu\n",num_precolorings);
+    printf("Done. num_precolorings=%19llu\n",num_precolorings);
     return true;
 }
 
@@ -275,5 +276,8 @@ int main(int argc, char *argv[])
            file_input.c_str(),parallel_job_number,parallel_num_jobs,parallel_depth);
     
     cProblemInstance P(file_input,parallel_job_number,parallel_num_jobs,parallel_depth);
-    P.verify_precoloring_extension();
+    if (P.verify_precoloring_extension())
+        return 0;  // success
+    else
+        return 1;  // failure
 }
