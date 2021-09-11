@@ -85,23 +85,24 @@ if __name__=="__main__":
                 pos[stem]=compute_pos(pos[v],avg_edge_length,0)
                 
                 if d<=1:  # add another layer
-                    branches=list(range(G.num_verts(),G.num_verts()+2))
+                    num_verts_to_add=2-d  # we don't need 2 vertices if this is the last level
+                    branches=list(range(G.num_verts(),G.num_verts()+num_verts_to_add))
                     print(f"adding {branches=}")
                     for i,b in enumerate(branches):
                         G.add_vertex(b)
                         G.set_vertex(b,default_vertex_info)
                         G.add_edge(stem,b,default_edge_label)
-                        pos[b]=compute_pos(pos[stem],avg_edge_length*.9,i*2-1)
+                        pos[b]=compute_pos(pos[stem],avg_edge_length*.9,i*num_verts_to_add-1)
                     
                     if d<=0:  # add another layer
                         for b in branches:
-                            leaves=list(range(G.num_verts(),G.num_verts()+2))
+                            leaves=list(range(G.num_verts(),G.num_verts()+1))  # only need to add 1 leaf vertex to each branch at this level
                             print(f"adding {leaves=}")
                             for i,l in enumerate(leaves):
                                 G.add_vertex(l)
                                 G.set_vertex(l,default_vertex_info)
                                 G.add_edge(b,l,default_edge_label)
-                                pos[l]=compute_pos(pos[b],avg_edge_length*.8,i-.5)
+                                pos[l]=compute_pos(pos[b],avg_edge_length*.8,0)
     
     G.set_pos(pos)
     
