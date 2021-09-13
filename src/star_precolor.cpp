@@ -254,7 +254,10 @@ bool cProblemInstance::verify_precoloring_extension()
         
     }  // main while loop
     
-    printf("Done.  num_precolorings=%19llu\n",num_precolorings);
+    if (num_failures>0)
+        printf("FAIL.  num_precolorings=%19llu, num_failures=%d\n",num_precolorings,num_failures);
+    else
+        printf("Done.  num_precolorings=%19llu\n",num_precolorings);
     return true;
 }
 
