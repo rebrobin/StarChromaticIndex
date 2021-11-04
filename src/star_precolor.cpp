@@ -130,7 +130,7 @@ bool cProblemInstance::verify_precoloring_extension()
 {
     std::vector<int> c(n);  // assignment of colors; c[v] is the color assigned to vertex v.
     int cur=0;  // current vertex
-    c[cur]=-1;  // color not yet assigned to cur
+    c[cur]=2;  // color not yet assigned to cur
     
     unsigned long long int num_precolorings=0;
     int num_failures=0;
@@ -154,11 +154,13 @@ bool cProblemInstance::verify_precoloring_extension()
         backtrack=false;
         
         while (true)  // finding next color
+            // We will use the colors 1..num_colors, and we count colors downward.
         {
             //printf("finding next color, cur=%d, c[cur]=%d\n",cur,c[cur]);
-            c[cur]++;
-            if ((c[cur]>=num_colors) ||
-                (c[cur]>cur))  // this is an optimization to remove redundancy when permuting color names
+            c[cur]--;
+            if (c[cur]==0)
+//             if ((c[cur]>=num_colors) ||
+//                 (c[cur]>cur))  // this is an optimization to remove redundancy when permuting color names
             {
                 // no more left colors left for cur, so backtrack
                 cur--;
@@ -248,7 +250,12 @@ bool cProblemInstance::verify_precoloring_extension()
                         continue;
                     }
                 }
-                c[cur]=-1;  // unassign color of the new cur
+                
+                // put an "unassigned" color on the new cur
+                if (cur<num_colors)  // for vertex cur (which is 0-indexed), only use colors 1..cur+1.  So the unassigned color is cur+2.
+                    c[cur]=cur+2;
+                else
+                    c[cur]=num_colors+1;
             }
         }  // advancing to next vertex
         
