@@ -63,10 +63,11 @@ if __name__=="__main__":
     G_no_reducer_edges=G.subgraph(vertices=None,  # all the vertices
         edge_property=lambda e: e[2]['color'][:3]!=(255,0,0))  # no red edges
     
+    tendril_leaves=[]
     for v in VG:
         if G_no_reducer_edges.degree(v)<2:
             print(f"Something is wrong with the degree of vertex {v}!")
-            exit(5)
+            #exit(5)
         elif G_no_reducer_edges.degree(v)==2:
             if G.get_vertex(v)['style']>0:  # style 0 is colored circle; style 4 is diamond
                 continue
@@ -100,10 +101,12 @@ if __name__=="__main__":
                             print(f"adding {leaves=}")
                             for i,l in enumerate(leaves):
                                 G.add_vertex(l)
+                                tendril_leaves.append(l)
                                 G.set_vertex(l,default_vertex_info)
                                 G.add_edge(b,l,default_edge_label)
                                 pos[l]=compute_pos(pos[b],avg_edge_length*.8,0)
     
+    print(f"{tendril_leaves=}")
     G.set_pos(pos)
     
     geogebra_graph.geogebra_graph_plot(G).save(file_input+".pdf")
@@ -132,7 +135,7 @@ if __name__=="__main__":
                     np.linalg.norm(pos[u]-pos[v]) for u,v,_ in H.edges()
                     ]))
     
-    # Sort the vertices according to 
+    # Classify the vertices according to color
     extend_verts  =[v for v in H.vertices() if H.get_vertex(v)['color'][:3]==(0,255,0)]  # green vertices
     reducer_verts =[v for v in H.vertices() if H.get_vertex(v)['color'][:3]==(255,0,0)]  # red vertices
     recolor_verts =[v for v in H.vertices() if H.get_vertex(v)['color'][:3]==(255,0,255)]  # magenta vertices
@@ -179,6 +182,11 @@ if __name__=="__main__":
                +recolor_verts+reducer_verts
                +extend_verts+recolored_verts)  # the new order of the vertices
     new_permutation={v:i for i,v in enumerate(new_order)}
+    print(f"{new_order=}")
+    tendril_leaves=[new_permutation[v] for v in new_order 
+                    if isinstance(v,tuple) and 
+                       (v[0] in tendril_leaves or v[1] in tendril_leaves)]
+    print(f"{tendril_leaves=}")
     H.relabel(perm=new_permutation,inplace=True)
     
     # We now create the lists of vertices.
@@ -221,6 +229,8 @@ if __name__=="__main__":
     reordered_precolor_verts=[P.index(v) for v in all_precolor_verts]
     reordered_reducer_verts =[P.index(v) for v in all_reducer_verts]
     new_permutation={v:i for i,v in enumerate(P)}
+    tendril_leaves=[new_permutation[v] for v in tendril_leaves]
+    print(f"{tendril_leaves=}")
     H.relabel(perm=new_permutation,inplace=True)
     
     colors=dict()
@@ -246,6 +256,15 @@ if __name__=="__main__":
         else:
             vertex_colors[other_v].append(v)
     
+    # for tendrils:
+    if False:
+        # NOTE: We actually can't do this here, because we need the edges to find the P4s.
+        # delete the incident edges
+        for e in list(H.edges()):
+            for v in tendril_leaves:
+                if v in e:
+                    H.delete_edge(e)
+    
     H.plot(vertex_colors=vertex_colors).save(file_input+'.line_graph.pdf')
     
     print()
@@ -269,11 +288,10 @@ if __name__=="__main__":
         possible_bits=(1<<6)-1  # possible bit positions
         for j in range(H.num_verts()):
             for i in range(j):
-                if H.has_edge(i,j):
+                if (i not in tendril_leaves and j not in tendril_leaves) and H.has_edge(i,j):
                     value|=mask
-                mask<<=1
-                if H.has_edge(i,j):
                     print(f"H has an edge between {i:2} and {j:2} {mask=:2}")
+                mask<<=1
                 if (mask & possible_bits)==0:  # 6 bits have been filled in
                     # Add the mapped value to the string.
                     s+=mapping[value]
@@ -299,4 +317,25 @@ if __name__=="__main__":
                 else:
                     N=list(F.neighbors(cur))
                 other=list(set(S)-set(N)-set([cur]))
-                f.write(f"B={cur},{other[0]},{N[0]},{N[1]}\n")
+                
+                intersection_size=len(set(S)&set(tendril_leaves))
+                if intersection_size>=2:
+                    #print(f"{S=} contains >=2 tendril leaves!")
+                    pass
+                elif intersection_size==1:
+                    print(f"{S=} contains 1 tendril leaf!")
+                    leaf=list(set(S)&set(tendril_leaves))[0]
+                    if leaf in N:
+                        must_be_equal=other+[cur]
+                    else:
+                        must_be_equal=N
+                    print(f"{must_be_equal=} {leaf=}")
+                    max_equal,min_equal=max(must_be_equal),min(must_be_equal)
+                    f.write(f"T={leaf},{max_equal},{min_equal}\n")
+                else:
+                    f.write(f"B={cur},{other[0]},{N[0]},{N[1]}\n")
+        
+        # give list of tendril leaves
+        for v in tendril_leaves:
+            f.write(f"L={v}\n")
+        

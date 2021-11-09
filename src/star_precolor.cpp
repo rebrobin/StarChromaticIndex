@@ -7,6 +7,13 @@
 #include <cstdio>
 
 
+#ifdef USE128BITS
+    typedef unsigned __int128 BIT_MASK;  // 128-bits, should work with both gcc and Clang
+#else
+    typedef unsigned long long int BIT_MASK;  // we want a 64-bit unsigned integer for bit masks
+#endif
+
+
 class cFourSetBlocker
 // helper class for testing for violations of the star chromatic condition.
 {
@@ -21,6 +28,20 @@ public:
 };
 
 
+class cThreeSetBlocker
+// helper class for testing for violations of the star chromatic condition.
+{
+    // If c[leaf]==2 and c[other1]==c[other2], this is a violation of the star chromatic condition for the special case of leaves on tendrils.
+public:
+    int other1,other2;
+    int leaf;
+    
+    cThreeSetBlocker(int leaf,int other1,int other2)
+        : leaf{leaf}, other1{other1}, other2{other2}
+    { }
+};
+
+
 class cProblemInstance
 {
 public:
@@ -29,6 +50,8 @@ public:
     int num_colors;
     int num_precolored_verts;
     std::vector<std::vector<cFourSetBlocker> > FourSets;  // indexed by each vertex, gives the sets to check for the star chromatic condition on P4s and C4s.
+    std::vector<std::vector<cThreeSetBlocker> > ThreeSets;  // indexed by each vertex, gives the sets to check for the star chromatic condition from leaves of tendrils.
+    BIT_MASK tendril_leaves;  // bit array indicating which vertices are tendril leaves
     
     // for parallelization
     int parallel_job_number;
@@ -66,7 +89,14 @@ cProblemInstance::cProblemInstance(
                 n=std::stoi(line.substr(2));
                 adj_pred.resize(n);  // initialize to be indexed by vertices
                 FourSets.resize(n);  // initialize to be indexed by vertices
+                ThreeSets.resize(n);  // initialize to be indexed by vertices
+                tendril_leaves=0;
                 printf("n=%d\n",n);
+                if (n>sizeof(BIT_MASK)*8)
+                {
+                    printf("ERROR: n=%d is larger than BIT_MASK (%d bits)\n",n,sizeof(BIT_MASK)*8);
+                    exit(99);
+                }
             }
             else if (line.rfind("num_colors=",0)==0)
             {
@@ -119,6 +149,27 @@ cProblemInstance::cProblemInstance(
                 FourSets[same1].push_back(cFourSetBlocker(same2,other1,other2));
                 //printf("There is a four-set blocker %d,%d and %d,%d\n",same1,same2,other1,other2);
             }
+            else if (line.rfind("T=",0)==0)  // three-vertex set blocker from tendril
+            {
+                int leaf,other1,other2;
+                sscanf(line.substr(2).c_str(),
+                    "%d,%d,%d",&leaf,&other1,&other2);
+                // we assume other1>other2
+                if (leaf>other1)
+                    ThreeSets[leaf  ].push_back(cThreeSetBlocker(leaf,other1,other2));
+                else
+                    ThreeSets[other1].push_back(cThreeSetBlocker(leaf,other1,other2));
+                //printf("There is a three-set blocker; leaf:%d other:%d and %d\n",leaf,other1,other2);
+            }
+            else if (line.rfind("L=",0)==0)  // tendril leaf
+            {
+                int leaf;
+                sscanf(line.substr(2).c_str(),
+                    "%d",&leaf);
+                //printf("tendril leaf %d\n",leaf);
+                tendril_leaves|=((BIT_MASK)1)<<leaf;
+                //printf("tendril_leaves=%lx\n",tendril_leaves);
+            }
         }
     
     // no need to close the file, since the destructor automatically does this when the object goes out of scope.
@@ -129,9 +180,12 @@ bool cProblemInstance::verify_precoloring_extension()
     // should the parallelization parameters be parameters for this function?
 {
     std::vector<int> c(n);  // assignment of colors; c[v] is the color assigned to vertex v.
-    int cur=0;  // current vertex
-    c[cur]=1;  // only color to check for vertex 0
+    int cur=1;  // current vertex
+    BIT_MASK cur_mask=2;  // a single bit set in the position corresponding to the current vertex, v
+    
+    c[0]=1;  // only color to check for vertex 0
     cur=1;
+    cur_mask=2;
     c[cur]=2;  // first color to check
     
     unsigned long long int num_precolorings=0;
@@ -145,9 +199,10 @@ bool cProblemInstance::verify_precoloring_extension()
     {
         // we have just arrived at cur, and we need to find the *next* valid color for cur
         //printf("\nStarting main loop, cur=%2d c=%d\n",cur,c[cur]);
-        if ((num_precolorings&0xffffffff)==0)  // 32 bits set, roughly 1 billion  // (cur <= num_precolored_verts-12)
+        if ((num_precolorings&0xffffffff)==0)  //((num_precolorings&0xffffffff)==0)  // 32 bits set, roughly 1 billion  // (cur <= num_precolored_verts-12)
         {
             printf("cur=%2d num_precolorings=%19llu",cur,num_precolorings);
+            //printf("cur=%2d cur_mask=%12lx num_precolorings=%19llu",cur,cur_mask,num_precolorings);
             for (int i=0; i<=cur; i++)
             {
                 printf(" %d:%d",i,c[i]);
@@ -182,20 +237,38 @@ bool cProblemInstance::verify_precoloring_extension()
             
             if (j<0)  // we did not find this color c[cur] used in the neighborhood, so c[cur] is a valid color
             {
-                // we now check the star coloring condition
+                // we now check the star coloring condition from four-vertex sets
                 for (j=FourSets[cur].size()-1; j>=0; j--)
-                    if (c[cur]==c[FourSets[cur][j].same] &&
-                        c[FourSets[cur][j].other1]==c[FourSets[cur][j].other2])
+                    if ((c[cur]==c[FourSets[cur][j].same]) &&
+                        (c[FourSets[cur][j].other1]==c[FourSets[cur][j].other2]))
                         //TODO: possible optimization: have FourSets[cur] be a local reference
                         // c[cur] does not give a valid star coloring
                         break;  // break out of this for loop, and then continue the while loop to find the next color
                 
                 //printf("done checking star condition, j=%2d\n",j);
                 if (j<0)
-                    // no star coloring conditions were violated, so c[cur] is a good color.
                 {
-                    backtrack=false;
-                    break;  // out of while loop for finding next color
+                    // now need to check the three-vertex sets
+                    for (j=ThreeSets[cur].size()-1; j>=0; j--)
+                        if ((c[ThreeSets[cur][j].leaf]==2) &&
+                            (c[ThreeSets[cur][j].other1]==c[ThreeSets[cur][j].other2]))
+                            // c[cur] does not give a valid star coloring
+                        {
+                            /*
+                            printf("Violation of 3-sets: %d:%d %d:%d leaf %d:%d\n",
+                                ThreeSets[cur][j].other1,c[ThreeSets[cur][j].other1],
+                                ThreeSets[cur][j].other2,c[ThreeSets[cur][j].other2],
+                                ThreeSets[cur][j].leaf,  c[ThreeSets[cur][j].leaf]);
+                            //*/
+                            break;  // break out of this for loop, and then continue the while loop to find the next color
+                        }
+                    
+                    if (j<0)
+                        // no star coloring conditions were violated, so c[cur] is a good color.
+                    {
+                        backtrack=false;
+                        break;  // out of while loop for finding next color
+                    }
                 }
             }
             
@@ -211,6 +284,7 @@ bool cProblemInstance::verify_precoloring_extension()
         {
             // no more left colors left for cur, so backtrack
             cur--;
+            cur_mask>>=1;
             
             if (cur==num_precolored_verts-1)
                 // we have backtracked to the last precolored vertex, so we have failed to extend this precoloring
@@ -238,6 +312,7 @@ bool cProblemInstance::verify_precoloring_extension()
         else  // not backtracking, so we advance to the next vertex
         {
             cur++;
+            cur_mask<<=1;
             
             if (cur==num_precolored_verts)
                 num_precolorings++;
@@ -246,6 +321,7 @@ bool cProblemInstance::verify_precoloring_extension()
             {
                 //printf("Hooray!  This precoloring extends! cur=%d\n",cur);
                 cur=num_precolored_verts-1;  // go back to the last precolored vertex
+                cur_mask=((BIT_MASK)1)<<cur;
                 c[cur]--;  // advance the color on cur
             }
             else
@@ -265,10 +341,16 @@ bool cProblemInstance::verify_precoloring_extension()
                 }
                 
                 // put the first color to try on the new cur
-                if (cur<num_colors)  // for vertex cur (which is 0-indexed), only use colors 1..cur+1.
-                    c[cur]=cur+1;
+                if (cur_mask&tendril_leaves)  // cur is a tendril leaf
+                {
+                    c[cur]=2;  // only two colors (2 and 1) for tendril leaves
+                    //printf("cur=%d is a tendril leaf, only using 2 colors\n",cur);
+                }
                 else
-                    c[cur]=num_colors;  // for other vertices, use colors 1..num_colors.
+                    if (cur<num_colors)  // for vertex cur (which is 0-indexed), only use colors 1..cur+1.
+                        c[cur]=cur+1;
+                    else
+                        c[cur]=num_colors;  // for other vertices, use colors 1..num_colors.
             }
         }  // advancing to next vertex
         
