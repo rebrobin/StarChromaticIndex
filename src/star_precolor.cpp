@@ -145,7 +145,7 @@ bool cProblemInstance::verify_precoloring_extension()
     {
         // we have just arrived at cur, and we need to find the *next* valid color for cur
         //printf("\nStarting main loop, cur=%2d c=%d\n",cur,c[cur]);
-        if (cur <= num_precolored_verts-12)
+        if ((num_precolorings&0xffffffff)==0)  // 32 bits set, roughly 1 billion  // (cur <= num_precolored_verts-12)
         {
             printf("cur=%2d num_precolorings=%19llu",cur,num_precolorings);
             for (int i=0; i<=cur; i++)
@@ -253,8 +253,8 @@ bool cProblemInstance::verify_precoloring_extension()
                 if (cur==parallel_depth)
                 {
                     parallel_count++;
-                    printf("cur=%2d parallel_depth=%2d parallel_count=%5d parallel_num_jobs=%5d parallel_job_number=%5d\n",
-                           cur,parallel_depth,parallel_count,parallel_num_jobs,parallel_job_number);
+                    //printf("cur=%2d parallel_depth=%2d parallel_count=%5d parallel_num_jobs=%5d parallel_job_number=%5d\n",
+                    //       cur,parallel_depth,parallel_count,parallel_num_jobs,parallel_job_number);
                     if ((parallel_count%parallel_num_jobs)!=parallel_job_number)
                     {
                         // we do not continue examining this subtree of the search tree
@@ -274,6 +274,7 @@ bool cProblemInstance::verify_precoloring_extension()
         
     }  // main while loop
     
+    printf("final parallel_count=%d\n",parallel_count);
     if (num_failures>0)
         printf("FAIL.  num_precolorings=%19llu, num_failures=%d\n",num_precolorings,num_failures);
     else
