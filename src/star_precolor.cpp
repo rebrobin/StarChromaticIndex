@@ -130,64 +130,45 @@ bool cProblemInstance::verify_precoloring_extension()
 {
     std::vector<int> c(n);  // assignment of colors; c[v] is the color assigned to vertex v.
     int cur=0;  // current vertex
-    c[cur]=2;  // color not yet assigned to cur
+    c[cur]=1;  // only color to check for vertex 0
+    cur=1;
+    c[cur]=2;  // first color to check
     
     unsigned long long int num_precolorings=0;
     int num_failures=0;
     
     int parallel_count=0;  // counts the number of search tree nodes encountered at depth parallel_depth
     
-    bool backtrack=false;
+    bool backtrack;
     
-    while (cur>=0)  // main loop
+    while (true)  // main loop
     {
-        // we have just arrived at cur, and we need to find the next valid color for cur
+        // we have just arrived at cur, and we need to find the *next* valid color for cur
         //printf("\nStarting main loop, cur=%2d c=%d\n",cur,c[cur]);
         if (cur <= num_precolored_verts-12)
         {
             printf("cur=%2d num_precolorings=%19llu",cur,num_precolorings);
             for (int i=0; i<=cur; i++)
+            {
                 printf(" %d:%d",i,c[i]);
+                if (c[i]<0)
+                {
+                    printf(" negative color!!!!\n");
+                    exit(6);
+                }
+            }
             printf("\n");
         }
         
-        backtrack=false;
+        backtrack=true;
         
-        while (true)  // finding next color
+        while (c[cur])  // finding next color, this could be a valid color if it is positive
+            // Note that we might start the while loop where c[cur] is already 0, in which case we want to backtrack.
             // We will use the colors 1..num_colors, and we count colors downward.
         {
-            //printf("finding next color, cur=%d, c[cur]=%d\n",cur,c[cur]);
-            c[cur]--;
-            if (c[cur]==0)
-//             if ((c[cur]>=num_colors) ||
-//                 (c[cur]>cur))  // this is an optimization to remove redundancy when permuting color names
-            {
-                // no more left colors left for cur, so backtrack
-                cur--;
-                
-                if (cur==num_precolored_verts-1)
-                    // we are going to backtrack to the last precolored vertex, so we have failed to extend this precoloring
-                {
-                    num_failures++; // add one to the number of failures
-                    printf("We found a failure! Current number of failures is: %2d\n", num_failures);  // print how many failures have been found currently
-                    printf("cur=%2d ",cur);
-                    for (int i=0; i<num_precolored_verts; i++)
-                        printf(" %d:%d",i,c[i]);
-                    printf("\n");
-                    if (num_failures>=100)
-                    {
-                        printf("Number of failures is over %d, exiting.\n",num_failures);
-                        printf("FAIL.  num_precolorings=%19llu\n",num_precolorings);
-                        return false;  // stop when number of failures is over 100
-                    }
-                }
-                
-                backtrack=true;
-                break;  // out of while loop for finding next color
-            }
-            
             //printf("we have a candidate color for cur=%2d, c[cur]=%d\n",cur,c[cur]);
             
+            // We test whether c[cur] is a valid color (ie, not on neighbors, star condition)
             int j;
             for (j=adj_pred[cur].size()-1; j>=0; j--)
                 // loop through the neighbors that have already been colored
@@ -212,15 +193,48 @@ bool cProblemInstance::verify_precoloring_extension()
                 //printf("done checking star condition, j=%2d\n",j);
                 if (j<0)
                     // no star coloring conditions were violated, so c[cur] is a good color.
+                {
+                    backtrack=false;
                     break;  // out of while loop for finding next color
+                }
             }
             
+            // this color was no good, so we advance to the next color and start the loop again.
+            c[cur]--;
+            
         }  // while loop finding next color
+        
         
         //printf("testing whether we should backtrack or not, cur=%d, backtrack=%d\n",cur,(int)backtrack);
         
         if (backtrack)
-            continue;  // outer while loop for moving cur
+        {
+            // no more left colors left for cur, so backtrack
+            cur--;
+            
+            if (cur==num_precolored_verts-1)
+                // we have backtracked to the last precolored vertex, so we have failed to extend this precoloring
+            {
+                num_failures++; // add one to the number of failures
+                printf("We found a failure! Current number of failures is: %2d\n", num_failures);  // print how many failures have been found currently
+                printf("cur=%2d ",cur);
+                for (int i=0; i<num_precolored_verts; i++)
+                    printf(" %d:%d",i,c[i]);
+                printf("\n");
+                if (num_failures>=100)
+                {
+                    printf("Number of failures is over %d, exiting.\n",num_failures);
+                    printf("FAIL.  num_precolorings=%19llu\n",num_precolorings);
+                    return false;  // stop when number of failures is over 100
+                }
+            }
+            
+            if (cur==0)  // we have backtracked to the first vertex and are done
+                break;
+            
+            c[cur]--;  // advance the color on cur
+            continue;  // main while loop
+        }
         else  // not backtracking, so we advance to the next vertex
         {
             cur++;
@@ -232,8 +246,7 @@ bool cProblemInstance::verify_precoloring_extension()
             {
                 //printf("Hooray!  This precoloring extends! cur=%d\n",cur);
                 cur=num_precolored_verts-1;  // go back to the last precolored vertex
-                for (int i=cur+1; i<n; i++)
-                    c[i]=-1;  // unassign the colors beyond cur
+                c[cur]--;  // advance the color on cur
             }
             else
             {
@@ -251,11 +264,11 @@ bool cProblemInstance::verify_precoloring_extension()
                     }
                 }
                 
-                // put an "unassigned" color on the new cur
-                if (cur<num_colors)  // for vertex cur (which is 0-indexed), only use colors 1..cur+1.  So the unassigned color is cur+2.
-                    c[cur]=cur+2;
+                // put the first color to try on the new cur
+                if (cur<num_colors)  // for vertex cur (which is 0-indexed), only use colors 1..cur+1.
+                    c[cur]=cur+1;
                 else
-                    c[cur]=num_colors+1;
+                    c[cur]=num_colors;  // for other vertices, use colors 1..num_colors.
             }
         }  // advancing to next vertex
         
