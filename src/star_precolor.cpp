@@ -319,13 +319,30 @@ bool cProblemInstance::verify_precoloring_extension()
         }
         else  // not backtracking, so we advance to the next vertex
         {
+            // parallelization code
+            if (cur==parallel_depth)
+            {
+                parallel_count++;
+                //printf("cur=%2d parallel_depth=%2d parallel_count=%5d parallel_num_jobs=%5d parallel_job_number=%5d\n",
+                //    cur,parallel_depth,parallel_count,parallel_num_jobs,parallel_job_number);
+                if ((parallel_count%parallel_num_jobs)!=parallel_job_number)
+                {
+                    // we do not continue examining this subtree of the search tree
+                    //printf("parallel NOT continuing!\n");
+                    c[cur]--;  // advance the color on cur
+                    continue;  // main while loop
+                }
+            }
+            
+            // move to next vertex
             cur++;
             cur_mask<<=1;
             
-            if (cur==num_precolored_verts)
+            if (cur==num_precolored_verts)  // so vertices 0..(num_precolored_verts-1) have been colored, which is num_precolored_verts number of vertices
             {
                 num_precolorings++;
                 
+                // only put output here to reduce the amount of output; also the if statement is only checked inside this inner part of the code.
                 if ((num_precolorings&0xffffff)==0)  //((num_precolorings&0xffffffff)==0)  // 32 bits set, roughly 1 billion
                 {
                     printf("cur=%2d num_precolorings=%19llu",cur,num_precolorings);
@@ -344,21 +361,8 @@ bool cProblemInstance::verify_precoloring_extension()
             }
             else
             {
-                if (cur==parallel_depth)
-                {
-                    parallel_count++;
-                    //printf("cur=%2d parallel_depth=%2d parallel_count=%5d parallel_num_jobs=%5d parallel_job_number=%5d\n",
-                    //    cur,parallel_depth,parallel_count,parallel_num_jobs,parallel_job_number);
-                    if ((parallel_count%parallel_num_jobs)!=parallel_job_number)
-                    {
-                        // we do not continue examining this subtree of the search tree
-                        //printf("parallel NOT continuing!\n");
-                        cur--;
-                        cur_mask>>=1;
-                        c[cur]--;  // advance the color on cur
-                        continue;  // main while loop
-                    }
-                }
+                // We will be able to advance cur to the next vertex.
+                // Now we need to set up the first color to try on that vertex.
                 
                 // put the first color to try on the new cur
                 if (cur_mask&tendril_leaves)  // cur is a tendril leaf
