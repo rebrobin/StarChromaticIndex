@@ -348,13 +348,15 @@ bool cProblemInstance::verify_precoloring_extension()
                 {
                     parallel_count++;
                     //printf("cur=%2d parallel_depth=%2d parallel_count=%5d parallel_num_jobs=%5d parallel_job_number=%5d\n",
-                    //       cur,parallel_depth,parallel_count,parallel_num_jobs,parallel_job_number);
+                    //    cur,parallel_depth,parallel_count,parallel_num_jobs,parallel_job_number);
                     if ((parallel_count%parallel_num_jobs)!=parallel_job_number)
                     {
                         // we do not continue examining this subtree of the search tree
-                        //printf("parallel NOT continuing!");
+                        //printf("parallel NOT continuing!\n");
                         cur--;
-                        continue;
+                        cur_mask>>=1;
+                        c[cur]--;  // advance the color on cur
+                        continue;  // main while loop
                     }
                 }
                 
