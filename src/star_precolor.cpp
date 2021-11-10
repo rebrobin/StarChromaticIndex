@@ -199,21 +199,15 @@ bool cProblemInstance::verify_precoloring_extension()
     {
         // we have just arrived at cur, and we need to find the *next* valid color for cur
         //printf("\nStarting main loop, cur=%2d c=%d\n",cur,c[cur]);
-        if ((num_precolorings&0xffffffff)==0)  //((num_precolorings&0xffffffff)==0)  // 32 bits set, roughly 1 billion  // (cur <= num_precolored_verts-12)
+        /*
+        if (cur <= num_precolored_verts-12)
         {
             printf("cur=%2d num_precolorings=%19llu",cur,num_precolorings);
-            //printf("cur=%2d cur_mask=%12lx num_precolorings=%19llu",cur,cur_mask,num_precolorings);
             for (int i=0; i<=cur; i++)
-            {
                 printf(" %d:%d",i,c[i]);
-                if (c[i]<0)
-                {
-                    printf(" negative color!!!!\n");
-                    exit(6);
-                }
-            }
             printf("\n");
         }
+        //*/
         
         backtrack=true;
         
@@ -315,7 +309,17 @@ bool cProblemInstance::verify_precoloring_extension()
             cur_mask<<=1;
             
             if (cur==num_precolored_verts)
+            {
                 num_precolorings++;
+                
+                if ((num_precolorings&0xffffff)==0)  //((num_precolorings&0xffffffff)==0)  // 32 bits set, roughly 1 billion
+                {
+                    printf("cur=%2d num_precolorings=%19llu",cur,num_precolorings);
+                    for (int i=0; i<=cur; i++)
+                        printf(" %d:%d",i,c[i]);
+                    printf("\n");
+                }
+            }
             
             if (cur>=n)  // we have colored all of the vertices
             {
