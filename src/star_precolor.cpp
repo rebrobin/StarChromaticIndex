@@ -52,6 +52,8 @@ public:
     std::vector<std::vector<cFourSetBlocker> > FourSets;  // indexed by each vertex, gives the sets to check for the star chromatic condition on P4s and C4s.
     std::vector<std::vector<cThreeSetBlocker> > ThreeSets;  // indexed by each vertex, gives the sets to check for the star chromatic condition from leaves of tendrils.
     BIT_MASK tendril_leaves;  // bit array indicating which vertices are tendril leaves
+    std::vector<int> SymmetryPair;  // array where SymmetryPair[cur] is the lesser vertex in a symmetry pair
+    BIT_MASK symmetry_vertices;  // bit array indicating which vertices are the greater vertex in a symmetry pair
     
     // for parallelization
     int parallel_job_number;
@@ -91,6 +93,8 @@ cProblemInstance::cProblemInstance(
                 FourSets.resize(n);  // initialize to be indexed by vertices
                 ThreeSets.resize(n);  // initialize to be indexed by vertices
                 tendril_leaves=0;
+                SymmetryPair.resize(n);
+                symmetry_vertices=0;
                 printf("n=%d\n",n);
                 if (n>sizeof(BIT_MASK)*8)
                 {
@@ -170,6 +174,16 @@ cProblemInstance::cProblemInstance(
                 tendril_leaves|=((BIT_MASK)1)<<leaf;
                 //printf("tendril_leaves=%lx\n",tendril_leaves);
             }
+            else if (line.rfind("S=",0)==0)  // symmetry pair
+            {
+                int pair1,pair2;
+                sscanf(line.substr(2).c_str(),
+                    "%d,%d",&pair1,&pair2);
+                // we assume pair1<pair2
+                printf("symmetry pair %d,%d\n",pair1,pair2);
+                symmetry_vertices|=((BIT_MASK)1)<<pair2;
+                SymmetryPair[pair2]=pair1;
+            }
         }
     
     // no need to close the file, since the destructor automatically does this when the object goes out of scope.
@@ -191,7 +205,7 @@ bool cProblemInstance::verify_precoloring_extension()
     unsigned long long int num_precolorings=0;
     int num_failures=0;
     
-    int parallel_count=0;  // counts the number of search tree nodes encountered at depth parallel_depth
+    long long int parallel_count=0;  // counts the number of search tree nodes encountered at depth parallel_depth
     
     bool backtrack;
     
@@ -350,17 +364,25 @@ bool cProblemInstance::verify_precoloring_extension()
                     c[cur]=2;  // only two colors (2 and 1) for tendril leaves
                     //printf("cur=%d is a tendril leaf, only using 2 colors\n",cur);
                 }
-                else
-                    if (cur<num_colors)  // for vertex cur (which is 0-indexed), only use colors 1..cur+1.
-                        c[cur]=cur+1;
+                else if (cur_mask&symmetry_vertices)  // cur is in a symmetry pair
+                {
+                    //printf("cur=%d is a symmetry pair of %d, so using fewer colors\n",cur,SymmetryPair[cur]);
+                    if (c[SymmetryPair[cur]]<num_colors)
+                        //FIXME: this is probably not the best way to do this, but we probably need to calculate the largest used color at each step.
+                        c[cur]=c[SymmetryPair[cur]]+1;
                     else
-                        c[cur]=num_colors;  // for other vertices, use colors 1..num_colors.
+                        c[cur]=c[SymmetryPair[cur]]-1;  // the assumption is that the vertices in the symmetry pair are adjacent
+                }
+                else if (cur<num_colors)  // for vertex cur (which is 0-indexed), only use colors 1..cur+1.
+                    c[cur]=cur+1;
+                else
+                    c[cur]=num_colors;  // for other vertices, use colors 1..num_colors.
             }
         }  // advancing to next vertex
         
     }  // main while loop
     
-    printf("final parallel_count=%d\n",parallel_count);
+    printf("final parallel_count=%lld\n",parallel_count);
     if (num_failures>0)
         printf("FAIL.  num_precolorings=%19llu, num_failures=%d\n",num_precolorings,num_failures);
     else

@@ -64,6 +64,7 @@ if __name__=="__main__":
         edge_property=lambda e: e[2]['color'][:3]!=(255,0,0))  # no red edges
     
     tendril_leaves=[]
+    tendril_branches=[]
     for v in VG:
         if G_no_reducer_edges.degree(v)<2:
             print(f"Something is wrong with the degree of vertex {v}!")
@@ -89,11 +90,14 @@ if __name__=="__main__":
                     num_verts_to_add=2-d  # we don't need 2 vertices if this is the last level
                     branches=list(range(G.num_verts(),G.num_verts()+num_verts_to_add))
                     print(f"adding {branches=}")
+                    branch_edges=[]
                     for i,b in enumerate(branches):
                         G.add_vertex(b)
                         G.set_vertex(b,default_vertex_info)
                         G.add_edge(stem,b,default_edge_label)
+                        branch_edges.append(tuple(sorted([stem,b])))
                         pos[b]=compute_pos(pos[stem],avg_edge_length*.9,i*num_verts_to_add-1)
+                    tendril_branches.append(branch_edges)
                     
                     if d<=0:  # add another layer
                         for b in branches:
@@ -107,6 +111,7 @@ if __name__=="__main__":
                                 pos[l]=compute_pos(pos[b],avg_edge_length*.8,0)
     
     print(f"{tendril_leaves=}")
+    print(f"{tendril_branches=}")
     G.set_pos(pos)
     
     geogebra_graph.geogebra_graph_plot(G).save(file_input+".pdf")
@@ -187,6 +192,10 @@ if __name__=="__main__":
                     if isinstance(v,tuple) and 
                        (v[0] in tendril_leaves or v[1] in tendril_leaves)]
     print(f"{tendril_leaves=}")
+    tendril_branches=[
+            tuple([new_permutation[v] for v in branch_edges])
+            for branch_edges in tendril_branches]
+    print(f"{tendril_branches=}")
     H.relabel(perm=new_permutation,inplace=True)
     
     # We now create the lists of vertices.
@@ -231,6 +240,10 @@ if __name__=="__main__":
     new_permutation={v:i for i,v in enumerate(P)}
     tendril_leaves=[new_permutation[v] for v in tendril_leaves]
     print(f"{tendril_leaves=}")
+    tendril_branches=[
+            tuple(sorted([new_permutation[v] for v in branch_edges]))
+            for branch_edges in tendril_branches]
+    print(f"{tendril_branches=}")
     H.relabel(perm=new_permutation,inplace=True)
     
     colors=dict()
@@ -338,4 +351,10 @@ if __name__=="__main__":
         # give list of tendril leaves
         for v in tendril_leaves:
             f.write(f"L={v}\n")
+        
+        # give list of tendril branches
+        for B in tendril_branches:
+            print(B)
+            # S for symmetry; we assume two vertices; in increasing order
+            f.write(f"S="+(','.join([str(x) for x in B]))+"\n")
         
