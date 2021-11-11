@@ -46,7 +46,6 @@ class cProblemInstance
 {
 public:
     int n;  // number of vertices of the graph
-    std::vector<std::vector<int> > adj_pred;  // list of adjacent predecessors for each vertex
     std::vector<BIT_MASK> adj_pred_mask;  // bit mask of adjacent predecessors for each vertex
     int num_colors;
     int num_precolored_verts;
@@ -90,7 +89,6 @@ cProblemInstance::cProblemInstance(
             if (line.rfind("n=",0)==0)
             {
                 n=std::stoi(line.substr(2));
-                adj_pred.resize(n);  // initialize to be indexed by vertices
                 adj_pred_mask.resize(n);  // initialize to be indexed by vertices
                 FourSets.resize(n);  // initialize to be indexed by vertices
                 ThreeSets.resize(n);  // initialize to be indexed by vertices
@@ -138,7 +136,6 @@ cProblemInstance::cProblemInstance(
                         if ((value & 1)!=0)  // test whether the bottom bit is nonzero
                         {
                             // there is an edge between i and j.
-                            adj_pred[j].push_back(i);
                             adj_pred_mask[j]|=((BIT_MASK)1)<<i;
                             //printf("There is an edge between %2d and %2d\n",i,j);
                         }
@@ -239,32 +236,6 @@ bool cProblemInstance::verify_precoloring_extension()
         //*/
         
         
-        /* verifying the color masks
-        for (int v=0; v<cur; v++)  // only accurate <cur
-            for (int j=1; j<=num_colors; j++)
-                if (
-                    ((c[v]==j) && ( ( color_mask[j] & (((BIT_MASK)1)<<v) ) ==0) ) ||
-                    ((c[v]!=j) && ( ( color_mask[j] & (((BIT_MASK)1)<<v) ) !=0) )
-                   )
-                {
-                    printf("Problem with color masks not being in sync!\n");
-                    printf("v=%d c[v]=%d color j=%d\n",v,c[v],j);
-                    
-                    printf("c= ");
-                    for (int i=0; i<=v; i++)
-                        printf(" %d:%d",i,c[i]);
-                    printf("\n");
-                    
-                    printf("color_mask[j] set bits:");
-                    for (int i=0; i<n; i++)
-                        if ( color_mask[j] & (((BIT_MASK)1)<<i) )
-                            printf(" %d",i);
-                    printf("\n");
-                    
-                    exit(77);
-                }
-        //*/
-        
         backtrack=true;
         
         while (c[cur])  // finding next color, this could be a valid color if it is positive
@@ -274,50 +245,6 @@ bool cProblemInstance::verify_precoloring_extension()
             //printf("we have a candidate color for cur=%2d, c[cur]=%d\n",cur,c[cur]);
             
             // We test whether c[cur] is a valid color (ie, not on neighbors, star condition)
-            
-            /*
-            //int j;
-            for (j=adj_pred[cur].size()-1; j>=0; j--)
-                // loop through the neighbors that have already been colored
-            {
-                //printf("checking neighbors: cur=%d, c[cur]=%d, j=%d, adj_pred[cur][j]=%d, c=%d\n",cur,c[cur],j,adj_pred[cur][j],c[adj_pred[cur][j]]);
-                if (c[adj_pred[cur][j]]==c[cur])  // c[cur] is not a valid color
-                    break;
-            }
-            */
-            
-            /*
-            if ( (j>=0) != ((color_mask[c[cur]]&adj_pred_mask[cur])!=0) )
-            {
-                printf("problem with checking neighbors' colors\n");
-                printf("cur=%d c[cur]=%d j=%d adj_pred[cur][j]=%d c[adj_pred[cur][j]]=%d\n",
-                       cur,c[cur],j,adj_pred[cur][j],c[adj_pred[cur][j]]);
-            
-                for (int i=0; i<=cur; i++)
-                    printf(" %d:%d",i,c[i]);
-                printf("\n");
-                
-                printf("color_mask[c[cur]]=%x adj_pred_mask[cur]=%x &=%x\n",
-                       color_mask[c[cur]],adj_pred_mask[cur],color_mask[c[cur]]&adj_pred_mask[cur]);
-                
-                // determine which bits of adj_pred_mask are set
-                printf("adj_mask_pred[cur] set bits:");
-                for (int i=0; i<n; i++)
-                    if ( adj_pred_mask[cur] & (((BIT_MASK)1)<<i) )
-                        printf(" %d",i);
-                printf("\n");
-                
-                printf("color_mask[c[cur]] set bits:");
-                for (int i=0; i<n; i++)
-                    if ( color_mask[c[cur]] & (((BIT_MASK)1)<<i) )
-                        printf(" %d",i);
-                printf("\n");
-                
-                exit(7);
-            }
-            //*/
-            
-            //printf("done checking neighbors' colors, j=%2d\n",j);
             
             if ((color_mask[c[cur]]&adj_pred_mask[cur])==0)  // we did not find this color c[cur] used in the neighborhood, so c[cur] is a valid color
             {
