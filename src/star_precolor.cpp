@@ -173,6 +173,12 @@ cProblemInstance::cProblemInstance(
                 //printf("tendril leaf %d\n",leaf);
                 tendril_leaves|=((BIT_MASK)1)<<leaf;
                 //printf("tendril_leaves=%lx\n",tendril_leaves);
+                if (leaf==0)
+                {
+                    printf("ERROR: cannot have vertex 0 be a leaf vertex\n");
+                    // Because we never allow vertex 0 to be any color other than 1, it cannot be a leaf vertex.
+                    exit(99);
+                }
             }
             else if (line.rfind("S=",0)==0)  // symmetry pair
             {

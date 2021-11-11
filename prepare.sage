@@ -227,19 +227,26 @@ if __name__=="__main__":
     while S:
         L=[]
         for v in S:
-             s=len([x for x in H.neighbors(v) if x in P])  # number of neighbors already colored
-             L.append((s,v))
+            s=len([x for x in H.neighbors(v) if x in P])  # number of neighbors already colored
+            if len(P)==0 and v in tendril_leaves:
+                pass  # the first vertex cannot be a tendril leaf
+            else:
+                L.append((s,v))  # sort by number of precolored nbrs
         w=max(L)[1]
         P.append(w)
         S.remove(w)
+    
+    if P[0] in tendril_leaves:
+        print(f"ERROR: a tendril leaf cannot be vertex 0")
+        exit(99)
     
     # Now reorder all_extend_verts.
     S=copy(all_extend_verts)
     while S:
         L=[]
         for v in S:
-             s=len([x for x in H.neighbors(v) if x in P])  # number of neighbors already colored
-             L.append((s,v))
+            s=len([x for x in H.neighbors(v) if x in P])  # number of neighbors already colored
+            L.append((s,v))
         w=max(L)[1]
         P.append(w)
         S.remove(w)
