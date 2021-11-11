@@ -66,8 +66,13 @@ if __name__=="__main__":
     tendril_leaves=[]
     tendril_branches=[]
     for v in VG:
-        if G.get_vertex(v)['style']>0:  # style 0 is colored circle; style 4 is diamond
-            continue  # do not add tendrils
+        if G.get_vertex(v)['style']==1:  # style 1 is x
+            continue  # do not add any tendrils; leave alone
+        
+        if G.get_vertex(v)['style']==4:  # style 4 is diamond
+            target_degree=2
+        else:  # default style 0 is colored circle
+            target_degree=3
         
         # we need to add a tendril to this vertex; but how big a tendril?
         # The size depends on the shortest distance to a green or magenta edge.
@@ -75,7 +80,7 @@ if __name__=="__main__":
         print(f"{v=} deg={G.degree(v)} {d=}")
         
         if d<=2:  # tendril needed
-            num_verts_to_add=3-G_no_reducer_edges.degree(v)  # num verts to add to make degree 3
+            num_verts_to_add=target_degree-G_no_reducer_edges.degree(v)  # num verts to add to make degree 3
             
             stems=list(range(G.num_verts(),G.num_verts()+num_verts_to_add))
             print(f"adding {stems=}")
