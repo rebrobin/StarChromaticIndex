@@ -207,6 +207,11 @@ bool cProblemInstance::verify_precoloring_extension()
     const BIT_MASK mask_extended_vertices=(((BIT_MASK)1)<<(num_precolored_verts-1))-1;
             // a mask to clear the colors on vertices beyond the precolored vertices
             // also clear bit num_verts_to_precolor-1
+    const BIT_MASK mask_first_n_bits=(((BIT_MASK)1)<<n)-1;
+            // mask with first n positions set; used to test with cur_mask when cur<n
+    const BIT_MASK mask_parallel_depth=((BIT_MASK)1)<<parallel_depth;
+            // mask with bit set at parallel_depth; used to test when cur==parallel_depth
+    
     
     c[0]=1;  // only color to check for vertex 0
     color_mask[1]|=((BIT_MASK)1)<<0;
@@ -325,7 +330,7 @@ bool cProblemInstance::verify_precoloring_extension()
         else  // good color found, not backtracking, so we advance to the next vertex
         {
             // parallelization code
-            if (cur==parallel_depth)
+            if (cur_mask & mask_parallel_depth)  // cur==parallel_depth
             {
                 parallel_count++;
                 //printf("cur=%2d parallel_depth=%2d parallel_count=%5d parallel_num_jobs=%5d parallel_job_number=%5d\n",
@@ -346,23 +351,20 @@ bool cProblemInstance::verify_precoloring_extension()
             cur++;
             cur_mask<<=1;
             
-            if (cur==num_precolored_verts)  // so vertices 0..(num_precolored_verts-1) have been colored, which is num_precolored_verts number of vertices
+            
+            if ((cur_mask & mask_first_n_bits)==0)  // cur>=n; we have colored all of the vertices
             {
-                num_precolorings++;
+                //printf("Hooray!  This precoloring extends! cur=%d\n",cur);
                 
-                // only put output here to reduce the amount of output; also the if statement is only checked inside this inner part of the code.
+                num_precolorings++;  // note this only counts precolorings that extend
                 if ((num_precolorings&0xffffff)==0)  //((num_precolorings&0xffffffff)==0)  // 32 bits set, roughly 1 billion
                 {
                     printf("cur=%2d num_precolorings=%19llu",cur,num_precolorings);
-                    for (int i=0; i<=cur; i++)
+                    for (int i=0; i<num_precolored_verts; i++)
                         printf(" %d:%d",i,c[i]);
                     printf("\n");
                 }
-            }
-            
-            if (cur>=n)  // we have colored all of the vertices
-            {
-                //printf("Hooray!  This precoloring extends! cur=%d\n",cur);
+                
                 cur=num_precolored_verts-1;  // go back to the last precolored vertex
                 cur_mask=((BIT_MASK)1)<<cur;
                 
