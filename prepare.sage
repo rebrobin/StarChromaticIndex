@@ -66,27 +66,31 @@ if __name__=="__main__":
     tendril_leaves=[]
     tendril_branches=[]
     for v in VG:
-        if G_no_reducer_edges.degree(v)<2:
-            print(f"Something is wrong with the degree of vertex {v}!")
-            #exit(5)
-        elif G_no_reducer_edges.degree(v)==2:
-            if G.get_vertex(v)['style']>0:  # style 0 is colored circle; style 4 is diamond
-                continue
-            # we need to add a tendril to this vertex; but how big a tendril?
-            # The size depends on the shortest distance to a green or magenta edge.
-            d=min(G.distance(v,x) for x in vertices_incident_to_extend_edges)
-            print(f"{v=} deg={G.degree(v)} {d=}")
+        if G.get_vertex(v)['style']>0:  # style 0 is colored circle; style 4 is diamond
+            continue  # do not add tendrils
+        
+        # we need to add a tendril to this vertex; but how big a tendril?
+        # The size depends on the shortest distance to a green or magenta edge.
+        d=min(G.distance(v,x) for x in vertices_incident_to_extend_edges)
+        print(f"{v=} deg={G.degree(v)} {d=}")
+        
+        if d<=2:  # tendril needed
+            num_verts_to_add=3-G_no_reducer_edges.degree(v)  # num verts to add to make degree 3
             
-            if d<=2:  # tendril needed
-                
-                stem=G.num_verts()  # new vertex to add
-                print(f"adding {stem=}")
-                G.add_vertex(stem)
-                G.set_vertex(stem,default_vertex_info)
-                G.add_edge(v,stem,default_edge_label)
-                pos[stem]=compute_pos(pos[v],avg_edge_length,0)
-                
-                if d<=1:  # add another layer
+            stems=list(range(G.num_verts(),G.num_verts()+num_verts_to_add))
+            print(f"adding {stems=}")
+            stem_edges=[]
+            for i,s in enumerate(stems):
+                G.add_vertex(s)
+                G.set_vertex(s,default_vertex_info)
+                G.add_edge(v,s,default_edge_label)
+                stem_edges.append(tuple(sorted([v,s])))
+                pos[s]=compute_pos(pos[v],avg_edge_length*.9,i*num_verts_to_add-1)
+            if len(stems)==2:
+                tendril_branches.append(stem_edges)
+            
+            if d<=1:  # add another layer
+                for s in stems:
                     num_verts_to_add=2-d  # we don't need 2 vertices if this is the last level
                     branches=list(range(G.num_verts(),G.num_verts()+num_verts_to_add))
                     print(f"adding {branches=}")
@@ -94,9 +98,9 @@ if __name__=="__main__":
                     for i,b in enumerate(branches):
                         G.add_vertex(b)
                         G.set_vertex(b,default_vertex_info)
-                        G.add_edge(stem,b,default_edge_label)
-                        branch_edges.append(tuple(sorted([stem,b])))
-                        pos[b]=compute_pos(pos[stem],avg_edge_length*.9,i*num_verts_to_add-1)
+                        G.add_edge(s,b,default_edge_label)
+                        branch_edges.append(tuple(sorted([s,b])))
+                        pos[b]=compute_pos(pos[s],avg_edge_length*.9,i*num_verts_to_add-1)
                     tendril_branches.append(branch_edges)
                     
                     if d<=0:  # add another layer
@@ -359,7 +363,7 @@ if __name__=="__main__":
         
         # give list of tendril branches
         for B in tendril_branches:
-            print(B)
+            print(f"symmetry {B}")
             # S for symmetry; we assume two vertices; in increasing order
             f.write(f"S="+(','.join([str(x) for x in B]))+"\n")
         
