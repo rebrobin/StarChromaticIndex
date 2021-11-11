@@ -47,6 +47,7 @@ class cProblemInstance
 public:
     int n;  // number of vertices of the graph
     std::vector<std::vector<int> > adj_pred;  // list of adjacent predecessors for each vertex
+    std::vector<BIT_MASK> adj_pred_mask;  // bit mask of adjacent predecessors for each vertex
     int num_colors;
     int num_precolored_verts;
     std::vector<std::vector<cFourSetBlocker> > FourSets;  // indexed by each vertex, gives the sets to check for the star chromatic condition on P4s and C4s.
@@ -90,6 +91,7 @@ cProblemInstance::cProblemInstance(
             {
                 n=std::stoi(line.substr(2));
                 adj_pred.resize(n);  // initialize to be indexed by vertices
+                adj_pred_mask.resize(n);  // initialize to be indexed by vertices
                 FourSets.resize(n);  // initialize to be indexed by vertices
                 ThreeSets.resize(n);  // initialize to be indexed by vertices
                 tendril_leaves=0;
@@ -137,6 +139,7 @@ cProblemInstance::cProblemInstance(
                         {
                             // there is an edge between i and j.
                             adj_pred[j].push_back(i);
+                            adj_pred_mask[j]|=((BIT_MASK)1)<<i;
                             //printf("There is an edge between %2d and %2d\n",i,j);
                         }
                         
@@ -200,10 +203,16 @@ bool cProblemInstance::verify_precoloring_extension()
     // should the parallelization parameters be parameters for this function?
 {
     std::vector<int> c(n);  // assignment of colors; c[v] is the color assigned to vertex v.
+    std::vector<BIT_MASK> color_mask(num_colors+1);  // bit mask of vertices with set color, for each color
     int cur=1;  // current vertex
     BIT_MASK cur_mask=2;  // a single bit set in the position corresponding to the current vertex, v
     
+    const BIT_MASK mask_extended_vertices=(((BIT_MASK)1)<<(num_precolored_verts-1))-1;
+            // a mask to clear the colors on vertices beyond the precolored vertices
+            // also clear bit num_verts_to_precolor-1
+    
     c[0]=1;  // only color to check for vertex 0
+    color_mask[1]|=((BIT_MASK)1)<<0;
     cur=1;
     cur_mask=2;
     c[cur]=2;  // first color to check
@@ -218,8 +227,8 @@ bool cProblemInstance::verify_precoloring_extension()
     while (true)  // main loop
     {
         // we have just arrived at cur, and we need to find the *next* valid color for cur
-        //printf("\nStarting main loop, cur=%2d c=%d\n",cur,c[cur]);
         /*
+        printf("\nStarting main loop, cur=%2d c=%d\n",cur,c[cur]);
         if (cur <= num_precolored_verts-12)
         {
             printf("cur=%2d num_precolorings=%19llu",cur,num_precolorings);
@@ -227,6 +236,33 @@ bool cProblemInstance::verify_precoloring_extension()
                 printf(" %d:%d",i,c[i]);
             printf("\n");
         }
+        //*/
+        
+        
+        /* verifying the color masks
+        for (int v=0; v<cur; v++)  // only accurate <cur
+            for (int j=1; j<=num_colors; j++)
+                if (
+                    ((c[v]==j) && ( ( color_mask[j] & (((BIT_MASK)1)<<v) ) ==0) ) ||
+                    ((c[v]!=j) && ( ( color_mask[j] & (((BIT_MASK)1)<<v) ) !=0) )
+                   )
+                {
+                    printf("Problem with color masks not being in sync!\n");
+                    printf("v=%d c[v]=%d color j=%d\n",v,c[v],j);
+                    
+                    printf("c= ");
+                    for (int i=0; i<=v; i++)
+                        printf(" %d:%d",i,c[i]);
+                    printf("\n");
+                    
+                    printf("color_mask[j] set bits:");
+                    for (int i=0; i<n; i++)
+                        if ( color_mask[j] & (((BIT_MASK)1)<<i) )
+                            printf(" %d",i);
+                    printf("\n");
+                    
+                    exit(77);
+                }
         //*/
         
         backtrack=true;
@@ -238,7 +274,9 @@ bool cProblemInstance::verify_precoloring_extension()
             //printf("we have a candidate color for cur=%2d, c[cur]=%d\n",cur,c[cur]);
             
             // We test whether c[cur] is a valid color (ie, not on neighbors, star condition)
-            int j;
+            
+            /*
+            //int j;
             for (j=adj_pred[cur].size()-1; j>=0; j--)
                 // loop through the neighbors that have already been colored
             {
@@ -246,12 +284,45 @@ bool cProblemInstance::verify_precoloring_extension()
                 if (c[adj_pred[cur][j]]==c[cur])  // c[cur] is not a valid color
                     break;
             }
+            */
+            
+            /*
+            if ( (j>=0) != ((color_mask[c[cur]]&adj_pred_mask[cur])!=0) )
+            {
+                printf("problem with checking neighbors' colors\n");
+                printf("cur=%d c[cur]=%d j=%d adj_pred[cur][j]=%d c[adj_pred[cur][j]]=%d\n",
+                       cur,c[cur],j,adj_pred[cur][j],c[adj_pred[cur][j]]);
+            
+                for (int i=0; i<=cur; i++)
+                    printf(" %d:%d",i,c[i]);
+                printf("\n");
+                
+                printf("color_mask[c[cur]]=%x adj_pred_mask[cur]=%x &=%x\n",
+                       color_mask[c[cur]],adj_pred_mask[cur],color_mask[c[cur]]&adj_pred_mask[cur]);
+                
+                // determine which bits of adj_pred_mask are set
+                printf("adj_mask_pred[cur] set bits:");
+                for (int i=0; i<n; i++)
+                    if ( adj_pred_mask[cur] & (((BIT_MASK)1)<<i) )
+                        printf(" %d",i);
+                printf("\n");
+                
+                printf("color_mask[c[cur]] set bits:");
+                for (int i=0; i<n; i++)
+                    if ( color_mask[c[cur]] & (((BIT_MASK)1)<<i) )
+                        printf(" %d",i);
+                printf("\n");
+                
+                exit(7);
+            }
+            //*/
             
             //printf("done checking neighbors' colors, j=%2d\n",j);
             
-            if (j<0)  // we did not find this color c[cur] used in the neighborhood, so c[cur] is a valid color
+            if ((color_mask[c[cur]]&adj_pred_mask[cur])==0)  // we did not find this color c[cur] used in the neighborhood, so c[cur] is a valid color
             {
                 // we now check the star coloring condition from four-vertex sets
+                int j;
                 for (j=FourSets[cur].size()-1; j>=0; j--)
                     if ((c[cur]==c[FourSets[cur][j].same]) &&
                         (c[FourSets[cur][j].other1]==c[FourSets[cur][j].other2]))
@@ -320,10 +391,11 @@ bool cProblemInstance::verify_precoloring_extension()
             if (cur==0)  // we have backtracked to the first vertex and are done
                 break;
             
+            color_mask[c[cur]]^=cur_mask;  // clear the color mask
             c[cur]--;  // advance the color on cur
             continue;  // main while loop
         }
-        else  // not backtracking, so we advance to the next vertex
+        else  // good color found, not backtracking, so we advance to the next vertex
         {
             // parallelization code
             if (cur==parallel_depth)
@@ -339,6 +411,9 @@ bool cProblemInstance::verify_precoloring_extension()
                     continue;  // main while loop
                 }
             }
+            
+            // set the color_mask
+            color_mask[c[cur]]|=cur_mask;
             
             // move to next vertex
             cur++;
@@ -363,7 +438,12 @@ bool cProblemInstance::verify_precoloring_extension()
                 //printf("Hooray!  This precoloring extends! cur=%d\n",cur);
                 cur=num_precolored_verts-1;  // go back to the last precolored vertex
                 cur_mask=((BIT_MASK)1)<<cur;
+                
                 c[cur]--;  // advance the color on cur
+                
+                // we need to clear the color_masks for the vertices from cur to n, inclusive
+                for (int i=num_colors; i>0; i--)
+                    color_mask[i]&=mask_extended_vertices;  // this also clears cur's color
             }
             else
             {
