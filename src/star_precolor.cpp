@@ -342,6 +342,7 @@ bool cProblemInstance::verify_precoloring_extension()
                     c[cur]--;  // advance the color on cur
                     continue;  // main while loop
                 }
+                printf("Proceeding past parallel_depth=%d, parallel_count=%d\n",parallel_depth,parallel_count);
             }
             
             // set the color_mask
