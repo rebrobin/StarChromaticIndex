@@ -54,7 +54,7 @@ if __name__=="__main__":
     def compute_pos(root,length,rotation):
         # we assume that root is a vector, length a scalar, and rotation is a scalar
         offset=(root-center)/np.linalg.norm(root-center)  # unit vector in the direction
-        theta=np.deg2rad(rotation*45)
+        theta=np.deg2rad(rotation*30)
         rot_matrix=np.array([[np.cos(theta),-np.sin(theta)],[np.sin(theta),np.cos(theta)]])
         offset=rot_matrix.dot(offset)  # rotate the offset
         return root+offset*length
@@ -95,18 +95,17 @@ if __name__=="__main__":
                 tendril_branches.append(stem_edges)
             
             if d<=1:  # add another layer
+                branch_edges=[]  # when 2 stems, add all the branches
                 for s in stems:
                     num_verts_to_add=2-d  # we don't need 2 vertices if this is the last level
                     branches=list(range(G.num_verts(),G.num_verts()+num_verts_to_add))
                     print(f"adding {branches=}")
-                    branch_edges=[]
                     for i,b in enumerate(branches):
                         G.add_vertex(b)
                         G.set_vertex(b,default_vertex_info)
                         G.add_edge(s,b,default_edge_label)
                         branch_edges.append(tuple(sorted([s,b])))
                         pos[b]=compute_pos(pos[s],avg_edge_length*.9,i*num_verts_to_add-1)
-                    tendril_branches.append(branch_edges)
                     
                     if d<=0:  # add another layer
                         for b in branches:
@@ -118,6 +117,9 @@ if __name__=="__main__":
                                 G.set_vertex(l,default_vertex_info)
                                 G.add_edge(b,l,default_edge_label)
                                 pos[l]=compute_pos(pos[b],avg_edge_length*.8,0)
+                
+                if branch_edges:  # not empty
+                    tendril_branches.append(branch_edges)  # add all branches for these stems
     
     print(f"{tendril_leaves=}")
     print(f"{tendril_branches=}")
@@ -221,35 +223,39 @@ if __name__=="__main__":
     print(f"{all_reducer_verts=}")
     print(f"{all_extend_verts=}")
 
-    # We reorder all_precolor_verts+all_reducer_verts, but need to keep track of which is which.
-    S=copy(all_precolor_verts)+copy(all_reducer_verts)  # reorder these vertices
-    P=[]  # new order of the vertices
-    while S:
-        L=[]
-        for v in S:
-            s=len([x for x in H.neighbors(v) if x in P])  # number of neighbors already colored
-            if len(P)==0 and v in tendril_leaves:
-                pass  # the first vertex cannot be a tendril leaf
-            else:
-                L.append((s,v))  # sort by number of precolored nbrs
-        w=max(L)[1]
-        P.append(w)
-        S.remove(w)
-    
-    if P[0] in tendril_leaves:
-        print(f"ERROR: a tendril leaf cannot be vertex 0")
-        exit(99)
-    
-    # Now reorder all_extend_verts.
-    S=copy(all_extend_verts)
-    while S:
-        L=[]
-        for v in S:
-            s=len([x for x in H.neighbors(v) if x in P])  # number of neighbors already colored
-            L.append((s,v))
-        w=max(L)[1]
-        P.append(w)
-        S.remove(w)
+    if True:
+        # We reorder all_precolor_verts+all_reducer_verts, but need to keep track of which is which.
+        S=copy(all_precolor_verts)+copy(all_reducer_verts)  # reorder these vertices
+        P=[]  # new order of the vertices
+        while S:
+            L=[]
+            for v in S:
+                s=len([x for x in H.neighbors(v) if x in P])  # number of neighbors already colored
+                if len(P)==0 and v in tendril_leaves:
+                    pass  # the first vertex cannot be a tendril leaf
+                else:
+                    L.append((s,v))  # sort by number of precolored nbrs
+            w=max(L)[1]
+            P.append(w)
+            S.remove(w)
+        
+        if P[0] in tendril_leaves:
+            print(f"ERROR: a tendril leaf cannot be vertex 0")
+            exit(99)
+        
+        # Now reorder all_extend_verts.
+        S=copy(all_extend_verts)
+        while S:
+            L=[]
+            for v in S:
+                s=len([x for x in H.neighbors(v) if x in P])  # number of neighbors already colored
+                L.append((s,v))
+            w=max(L)[1]
+            P.append(w)
+            S.remove(w)
+    else:
+        # no re-ordering
+        P=all_precolor_verts+all_reducer_verts+all_extend_verts
     
     reordered_precolor_verts=[P.index(v) for v in all_precolor_verts]
     reordered_reducer_verts =[P.index(v) for v in all_reducer_verts]
@@ -377,5 +383,6 @@ if __name__=="__main__":
         for B in tendril_branches:
             print(f"symmetry {B}")
             # S for symmetry; we assume two vertices; in increasing order
-            f.write(f"S="+(','.join([str(x) for x in B]))+"\n")
+            for i in range(len(B)-1):
+                f.write(f"S="+(','.join([str(x) for x in B[i:i+2]]))+"\n")
         
