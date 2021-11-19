@@ -65,6 +65,7 @@ if __name__=="__main__":
     
     tendril_leaves=[]
     tendril_branches=[]
+    tendril_stems=[]
     for v in VG:
         if G.get_vertex(v)['style']==1:  # style 1 is x
             continue  # do not add any tendrils; leave alone
@@ -92,7 +93,7 @@ if __name__=="__main__":
                 stem_edges.append(tuple(sorted([v,s])))
                 pos[s]=compute_pos(pos[v],avg_edge_length*.9,i*num_verts_to_add-1)
             if len(stems)==2:
-                tendril_branches.append(stem_edges)
+                tendril_stems.append(stem_edges)
             
             if d<=1:  # add another layer
                 branch_edges=[]  # when 2 stems, add all the branches
@@ -123,6 +124,7 @@ if __name__=="__main__":
     
     print(f"{tendril_leaves=}")
     print(f"{tendril_branches=}")
+    print(f"{tendril_stems=}")
     G.set_pos(pos)
     
     geogebra_graph.geogebra_graph_plot(G).save(file_input+".pdf")
@@ -207,6 +209,10 @@ if __name__=="__main__":
             tuple([new_permutation[v] for v in branch_edges])
             for branch_edges in tendril_branches]
     print(f"{tendril_branches=}")
+    tendril_stems=[
+            tuple([new_permutation[v] for v in stem_edges])
+            for stem_edges in tendril_stems]
+    print(f"{tendril_stems=}")
     H.relabel(perm=new_permutation,inplace=True)
     
     # We now create the lists of vertices.
@@ -266,6 +272,10 @@ if __name__=="__main__":
             tuple(sorted([new_permutation[v] for v in branch_edges]))
             for branch_edges in tendril_branches]
     print(f"{tendril_branches=}")
+    tendril_stems=[
+            tuple(sorted([new_permutation[v] for v in stem_edges]))
+            for stem_edges in tendril_stems]
+    print(f"{tendril_stems=}")
     H.relabel(perm=new_permutation,inplace=True)
     
     if file_input=="1vertex_distance3.ggb":
@@ -372,15 +382,17 @@ if __name__=="__main__":
                     print(f"{must_be_equal=} {leaf=}")
                     max_equal,min_equal=max(must_be_equal),min(must_be_equal)
                     f.write(f"T={leaf},{max_equal},{min_equal}\n")
-                else:
+                else:  # no tendril leaves
+                    #if len(set(S)&set(tendril_branches)):
+                    #    pass
                     f.write(f"B={cur},{other[0]},{N[0]},{N[1]}\n")
         
         # give list of tendril leaves
         for v in tendril_leaves:
             f.write(f"L={v}\n")
         
-        # give list of tendril branches
-        for B in tendril_branches:
+        # give list of tendril branches+stems
+        for B in tendril_branches+tendril_stems:
             print(f"symmetry {B}")
             # S for symmetry; we assume two vertices; in increasing order
             for i in range(len(B)-1):
