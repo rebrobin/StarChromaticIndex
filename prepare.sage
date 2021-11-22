@@ -353,6 +353,7 @@ if __name__=="__main__":
         
         # do some preprocessing for star vertex coloring
         PC=[[] for i in range(H.num_verts())]
+        TB=set([x for X in tendril_branches for x in X])
         for S in itertools.combinations(H.vertices(),4):
             if ( len(set(S) & set(reordered_reducer_verts))>0 and
                  len(set(S) & set(all_extend_verts))>0 ):
@@ -383,9 +384,20 @@ if __name__=="__main__":
                     max_equal,min_equal=max(must_be_equal),min(must_be_equal)
                     f.write(f"T={leaf},{max_equal},{min_equal}\n")
                 else:  # no tendril leaves
-                    #if len(set(S)&set(tendril_branches)):
-                    #    pass
-                    f.write(f"B={cur},{other[0]},{N[0]},{N[1]}\n")
+                    if len(set(S)&TB)==1:
+                        for v in set(S)&TB:  # tendril branch vertex
+                            leaf=[x for x in H.neighbors(v) if x in tendril_leaves][0]  # tendril leaf
+                            print(f"{S=} has one tendril branch, {v=} {leaf=}")
+                            if v in N:
+                                must_be_equal=other+[cur]
+                            else:
+                                must_be_equal=N
+                            print(f"{must_be_equal=} {v=} {leaf=}")
+                            max_equal,min_equal=max(must_be_equal),min(must_be_equal)
+                            f.write(f"U={leaf},{max_equal},{min_equal}\n")
+                            break
+                    else:
+                        f.write(f"B={cur},{other[0]},{N[0]},{N[1]}\n")
         
         # give list of tendril leaves
         for v in tendril_leaves:
