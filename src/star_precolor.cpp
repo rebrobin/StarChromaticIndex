@@ -53,7 +53,7 @@ public:
     std::vector<std::vector<cFourSetBlocker> > FourSets;  // indexed by each vertex, gives the sets to check for the star chromatic condition on P4s and C4s.
     std::vector<std::vector<cThreeSetBlocker> > ThreeSets;  // indexed by each vertex, gives the sets to check for the star chromatic condition from leaves of tendrils.
     BIT_MASK tendril_leaves;  // bit array indicating which vertices are tendril leaves
-    std::vector<int> SymmetryPair;  // array where SymmetryPair[cur] is the lesser vertex in a symmetry pair
+    std::vector<int> SymmetryPair;  // array where SymmetryPair[cur] is the lesser-indexed vertex in a symmetry pair
     BIT_MASK symmetry_vertices;  // bit array indicating which vertices are the greater vertex in a symmetry pair
     
     // for parallelization
@@ -409,11 +409,13 @@ bool cProblemInstance::verify_precoloring_extension()
                 else if (cur_mask&symmetry_vertices)  // cur is in a symmetry pair
                 {
                     //printf("cur=%d is a symmetry pair of %d, so using fewer colors\n",cur,SymmetryPair[cur]);
-                    if (c[SymmetryPair[cur]]<=num_colors-3)
+                    if ((SymmetryPair[cur]<num_colors) &&
+                        (c[SymmetryPair[cur]]==SymmetryPair[cur]+1))
                         //FIXME: this is probably not the best way to do this, but we probably need to calculate the largest used color at each step.
-                        c[cur]=c[SymmetryPair[cur]]+3;  // there might be 4 vertices in a symmetry "pair"
+                        c[cur]=num_colors;  // just set to maximum
+                            // complicated, since there might be 4 vertices in a symmetry "pair"
                     else
-                        c[cur]=c[SymmetryPair[cur]]-1;  // the assumption is that the vertices in the symmetry pair are adjacent
+                        c[cur]=c[SymmetryPair[cur]]-1;  // the assumption is that the vertices in the symmetry pair are adjacent, or at least should not be the same.
                 }
                 else if (cur<num_colors)  // for vertex cur (which is 0-indexed), only use colors 1..cur+1.
                     c[cur]=cur+1;
