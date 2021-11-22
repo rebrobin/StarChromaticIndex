@@ -206,6 +206,7 @@ bool cProblemInstance::verify_precoloring_extension()
     // should the parallelization parameters be parameters for this function?
 {
     std::vector<int> c(n);  // assignment of colors; c[v] is the color assigned to vertex v.
+    std::vector<int> prev_c(n);  // keeping previous assignment of colors, for output
     std::vector<BIT_MASK> color_mask(num_colors+1);  // bit mask of vertices with set color, for each color
     int cur=1;  // current vertex
     BIT_MASK cur_mask=2;  // a single bit set in the position corresponding to the current vertex, v
@@ -368,9 +369,20 @@ bool cProblemInstance::verify_precoloring_extension()
                 num_precolorings++;  // note this only counts precolorings that extend
                 if ((num_precolorings&0xffffff)==0)  //((num_precolorings&0xffffffff)==0)  // 32 bits set, roughly 1 billion
                 {
-                    printf("cur=%2d num_precolorings=%19llu",cur,num_precolorings);
+                    printf("num_precolorings=%15llu",num_precolorings);
+                    bool marker_placed=false;
                     for (int i=0; i<num_precolored_verts; i++)
-                        printf(" %d:%d",i,c[i]);
+                    {
+                        if ((!marker_placed) && (c[i]!=prev_c[i]))
+                        {
+                            printf("+");  // indicates the least vertex whose color has changed since the last output
+                            marker_placed=true;
+                        }
+                        else
+                            printf(" ");
+                        printf("%d:%d",i,c[i]);
+                        prev_c[i]=c[i];
+                    }
                     printf("\n");
                 }
                 
