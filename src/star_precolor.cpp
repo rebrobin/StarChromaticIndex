@@ -31,13 +31,14 @@ public:
 class cThreeSetBlocker
 // helper class for testing for violations of the star chromatic condition.
 {
-    // If c[leaf]==2 and c[other1]==c[other2], this is a violation of the star chromatic condition for the special case of leaves on tendrils.
+    // If c[leaf]==type and c[other1]==c[other2], this is a violation of the star chromatic condition for the special case of leaves on tendrils.
 public:
     int other1,other2;
     int leaf;
+    int type;  // 2 for type T, 1 for type U
     
-    cThreeSetBlocker(int leaf,int other1,int other2)
-        : leaf{leaf}, other1{other1}, other2{other2}
+    cThreeSetBlocker(int leaf,int other1,int other2,int type)
+        : leaf{leaf}, other1{other1}, other2{other2}, type{type}
     { }
 };
 
@@ -153,17 +154,22 @@ cProblemInstance::cProblemInstance(
                 FourSets[same1].push_back(cFourSetBlocker(same2,other1,other2));
                 //printf("There is a four-set blocker %d,%d and %d,%d\n",same1,same2,other1,other2);
             }
-            else if (line.rfind("T=",0)==0)  // three-vertex set blocker from tendril
+            else if (
+                        // three-vertex set blocker from tendril
+                     (line.rfind("T=",0)==0) ||
+                     (line.rfind("U=",0)==0) 
+                    )
             {
-                int leaf,other1,other2;
+                int leaf,other1,other2,type;
+                type=(line.rfind("T=",0)==0) ? 2 : 1;
                 sscanf(line.substr(2).c_str(),
                     "%d,%d,%d",&leaf,&other1,&other2);
                 // we assume other1>other2
                 if (leaf>other1)
-                    ThreeSets[leaf  ].push_back(cThreeSetBlocker(leaf,other1,other2));
+                    ThreeSets[leaf  ].push_back(cThreeSetBlocker(leaf,other1,other2,type));
                 else
-                    ThreeSets[other1].push_back(cThreeSetBlocker(leaf,other1,other2));
-                //printf("There is a three-set blocker; leaf:%d other:%d and %d\n",leaf,other1,other2);
+                    ThreeSets[other1].push_back(cThreeSetBlocker(leaf,other1,other2,type));
+                printf("There is a three-set blocker; leaf:%d other:%d and %d  type=%d\n",leaf,other1,other2,type);
             }
             else if (line.rfind("L=",0)==0)  // tendril leaf
             {
@@ -267,15 +273,17 @@ bool cProblemInstance::verify_precoloring_extension()
                 {
                     // now need to check the three-vertex sets
                     for (j=ThreeSets[cur].size()-1; j>=0; j--)
-                        if ((c[ThreeSets[cur][j].leaf]==2) &&
+                        if ((c[ThreeSets[cur][j].leaf] & ThreeSets[cur][j].type) &&
                             (c[ThreeSets[cur][j].other1]==c[ThreeSets[cur][j].other2]))
                             // c[cur] does not give a valid star coloring
                         {
                             /*
-                            printf("Violation of 3-sets: %d:%d %d:%d leaf %d:%d\n",
+                            if (ThreeSets[cur][j].type==1)
+                            printf("Violation of 3-sets: %d:%d %d:%d leaf %d:%d type %d\n",
                                 ThreeSets[cur][j].other1,c[ThreeSets[cur][j].other1],
                                 ThreeSets[cur][j].other2,c[ThreeSets[cur][j].other2],
-                                ThreeSets[cur][j].leaf,  c[ThreeSets[cur][j].leaf]);
+                                ThreeSets[cur][j].leaf,  c[ThreeSets[cur][j].leaf],
+                                ThreeSets[cur][j].type);
                             //*/
                             break;  // break out of this for loop, and then continue the while loop to find the next color
                         }
@@ -389,9 +397,9 @@ bool cProblemInstance::verify_precoloring_extension()
                 else if (cur_mask&symmetry_vertices)  // cur is in a symmetry pair
                 {
                     //printf("cur=%d is a symmetry pair of %d, so using fewer colors\n",cur,SymmetryPair[cur]);
-                    if (c[SymmetryPair[cur]]<num_colors)
+                    if (c[SymmetryPair[cur]]<=num_colors-3)
                         //FIXME: this is probably not the best way to do this, but we probably need to calculate the largest used color at each step.
-                        c[cur]=c[SymmetryPair[cur]]+1;
+                        c[cur]=c[SymmetryPair[cur]]+3;  // there might be 4 vertices in a symmetry "pair"
                     else
                         c[cur]=c[SymmetryPair[cur]]-1;  // the assumption is that the vertices in the symmetry pair are adjacent
                 }
