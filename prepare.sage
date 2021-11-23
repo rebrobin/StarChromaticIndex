@@ -281,6 +281,9 @@ if __name__=="__main__":
     if file_input=="1vertex_distance3.ggb":
         tendril_leaves=[10,11,14,15,20,21,24,25,30,31,34,35,40,41,44,45]
         tendril_branches=[(6,7),(8,9),(12,13),(16,17),(18,19),(22,23),(26,27),(28,29),(32,33),(36,37),(38,39),(42,43)]
+    elif file_input=="1vertex_distance4a.ggb":
+        # add additional symmetries
+        tendril_stems.extend([(3,7),(8,9),(12,13),(10,11),(2,4),(5,6)])  # do not include (0,1) since 0 does not change
     
     
     colors=dict()
