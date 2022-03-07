@@ -214,8 +214,14 @@ bool cProblemInstance::verify_precoloring_extension()
     const BIT_MASK mask_extended_vertices=(((BIT_MASK)1)<<(num_precolored_verts-1))-1;
             // a mask to clear the colors on vertices beyond the precolored vertices
             // also clear bit num_verts_to_precolor-1
-    const BIT_MASK mask_first_n_bits=(((BIT_MASK)1)<<n)-1;
+    const BIT_MASK mask_first_n_bits=
+                (n==8*sizeof(BIT_MASK)) ?
+                ~(BIT_MASK)0 :
+                (((BIT_MASK)1)<<n)-1;
             // mask with first n positions set; used to test with cur_mask when cur<n
+            // Note that when n is equal to the number of bits in BIT_MASK,
+            // then 1<<n will equal 1, instead of the desired 0.
+            // So we deal with that case separately.
     const BIT_MASK mask_parallel_depth=((BIT_MASK)1)<<parallel_depth;
             // mask with bit set at parallel_depth; used to test when cur==parallel_depth
     
